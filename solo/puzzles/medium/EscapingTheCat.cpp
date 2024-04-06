@@ -6,6 +6,7 @@
 
 constexpr int POOL_RADIUS = 500;
 constexpr int MOUSE_SPEED = 10;
+constexpr float M_PI = 3.14f; //not necessary in codingame page
 
 int distance(int a_x, int a_y, int b_x, int b_y)
 {
