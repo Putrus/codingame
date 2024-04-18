@@ -48,10 +48,11 @@ int main()
    Position dir = { 0, -1, 1 };
    while (current_pos.moves < n)
    {
-      if (std::find(history.begin(), history.end(), current_pos) != history.end())
+      auto find = std::find(history.begin(), history.end(), current_pos);
+      if (find != history.end())
       {
-         n %= current_pos.moves;
-         current_pos.moves = 0;
+         n = (n - find->moves) % (current_pos.moves - find->moves);
+         current_pos.moves = find->moves;
          history.clear();
       }
       history.push_back(current_pos);
