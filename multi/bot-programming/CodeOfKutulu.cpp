@@ -3,6 +3,8 @@
 #include <vector>
 #include <algorithm>
 
+// nothing change to be promoted to Wood 1 League
+
 struct Entity
 {
    int x;
@@ -27,7 +29,7 @@ int main()
    int wanderer_spawn_time; // how many turns the wanderer take to spawn, always 3 until wood 1
    int wanderer_life_time; // how many turns the wanderer is on map after spawning, always 40 until wood 1
    std::cin >> sanity_loss_lonely >> sanity_loss_group >> wanderer_spawn_time >> wanderer_life_time; std::cin.ignore();
-
+   
    // game loop
    while (1)
    {
@@ -58,7 +60,7 @@ int main()
       bool wait = true;
       for (const auto& wanderer : wanderers)
       {
-         if (std::abs(wanderer.x - player.x) == 2 && wanderer.y == player.y)
+         if (std::abs(wanderer.x - player.x) <= 2 && wanderer.y == player.y)
          {
             int change_x = -(wanderer.x - player.x) / std::abs(wanderer.x - player.x);
             int new_x = player.x + change_x;
@@ -83,7 +85,7 @@ int main()
             break;
          }
 
-         if (std::abs(wanderer.y - player.y) == 2 && wanderer.x == player.x)
+         if (std::abs(wanderer.y - player.y) <= 2 && wanderer.x == player.x)
          {
             int change_y = -(wanderer.y - player.y) / std::abs(wanderer.y - player.y);
             int new_y = player.y + change_y;
