@@ -52,25 +52,23 @@ int main()
       if (find != history.end())
       {
          n = (n - find->moves) % (current_pos.moves - find->moves);
-         current_pos.moves = find->moves;
+         current_pos.moves = 0;
          history.clear();
       }
       history.push_back(current_pos);
       Position new_pos = current_pos + dir;
       if (map[new_pos.y][new_pos.x] == '#')
       {
-         if (dir.x != 0)
-         {
-            dir.y = dir.x;
-            dir.x = 0;
-         }
-         else if (dir.y != 0)
-         {
-            dir.x = -dir.y;
-            dir.y = 0;
-         }
+         std::swap(dir.x, dir.y);
+         dir.x = -dir.x;
       }
       map[current_pos.y][current_pos.x] = '.';
+      new_pos = current_pos + dir;
+      if (map[new_pos.y][new_pos.x] == '#')
+      {
+         std::swap(dir.x, dir.y);
+         dir.x = -dir.x;
+      }
       current_pos = current_pos + dir;
       map[current_pos.y][current_pos.x] = 'O';
 
