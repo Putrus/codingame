@@ -158,7 +158,6 @@ bool move(char move, State& state, const Bitboard& walls)
 
    if (!walls.getBit(pusher_new_pos))
    {
-      state.pusher = pusher_new_pos;
       if (state.boxes.getBit(pusher_new_pos))
       {
          Position potential_box_new_pos = pusher_new_pos + direction;
@@ -166,6 +165,7 @@ bool move(char move, State& state, const Bitboard& walls)
          {
             state.boxes.setBit(pusher_new_pos, 0);
             state.boxes.setBit(potential_box_new_pos);
+            state.pusher = pusher_new_pos;
             return true;
          }
          else
@@ -174,6 +174,7 @@ bool move(char move, State& state, const Bitboard& walls)
          }
       }
 
+      state.pusher = pusher_new_pos;
       return true;
    }
    else
@@ -210,6 +211,7 @@ int main()
    // game loop
    int turn = 0;
    std::string moves;
+   State state_copy;
    while (1)
    {
       Position pusher;
@@ -249,25 +251,25 @@ int main()
                continue;
             }
 
-            State state_copy = current_state.first;
+            state_copy = current_state.first;
             if (move('U', state_copy, wall_bitboard))
             {
                states.push({ state_copy, current_state.second + 'U' });
+               state_copy = current_state.first;
             }
 
-            state_copy = current_state.first;
             if (move('L', state_copy, wall_bitboard))
             {
                states.push({ state_copy, current_state.second + 'L' });
+               state_copy = current_state.first;
             }
 
-            state_copy = current_state.first;
             if (move('R', state_copy, wall_bitboard))
             {
                states.push({ state_copy, current_state.second + 'R' });
+               state_copy = current_state.first;
             }
 
-            state_copy = current_state.first;
             if (move('D', state_copy, wall_bitboard))
             {
                states.push({ state_copy, current_state.second + 'D' });
