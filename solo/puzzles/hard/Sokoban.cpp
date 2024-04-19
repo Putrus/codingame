@@ -117,6 +117,23 @@ bool operator==(const State& lhs, const State& rhs)
    return lhs.pusher == rhs.pusher && lhs.boxes == rhs.boxes;
 }
 
+namespace std
+{
+   template <>
+   struct hash<State>
+   {
+      size_t operator()(const State& state) const noexcept
+      {
+         size_t hash_value = 17;
+         hash_value = hash_value * 31 + std::hash<int>{}(state.pusher.x);
+         hash_value = hash_value * 31 + std::hash<int>{}(state.pusher.y);
+         hash_value = hash_value * 31 + std::hash<long long>{}(state.boxes.a);
+         hash_value = hash_value * 31 + std::hash<long long>{}(state.boxes.b);
+         return hash_value;
+      }
+   };
+}
+
 Position getMoveDirection(char move)
 {
    switch (move)
@@ -203,12 +220,12 @@ int main()
          std::cin >> box; std::cin.ignore();
          boxes.setBit(box);
       }
-      
+
       if (turn == 0)
       {
          std::stack<std::pair<State, std::string>> states;
          states.push({ { pusher, boxes }, "" });
-         std::vector<State> history;
+         std::unordered_set<State> history;
          while (!states.empty())
          {
             auto current_state = states.top();
@@ -220,12 +237,17 @@ int main()
                break;
             }
 
-            if (std::find(history.begin(), history.end(), current_state.first) != history.end())
+            if (history.find(current_state.first) != history.end())
             {
                continue;
             }
 
-            history.push_back(current_state.first);
+            history.insert(current_state.first);
+
+            if (moves.size() >= 400)
+            {
+               continue;
+            }
 
             State state_copy = current_state.first;
             if (move('U', state_copy, wall_bitboard))
