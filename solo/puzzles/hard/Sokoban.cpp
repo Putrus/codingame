@@ -150,7 +150,7 @@ Position getMoveDirection(char move)
    return { 0, 0 };
 }
 
-bool move(char move, State& state, const Bitboard& walls)
+bool move(char move, State& state, const Bitboard& walls, const Bitboard& win)
 {
    Position direction = getMoveDirection(move);
 
@@ -161,17 +161,15 @@ bool move(char move, State& state, const Bitboard& walls)
       if (state.boxes.getBit(pusher_new_pos))
       {
          Position potential_box_new_pos = pusher_new_pos + direction;
-         if (!walls.getBit(potential_box_new_pos) && !state.boxes.getBit(potential_box_new_pos))
-         {
-            state.boxes.setBit(pusher_new_pos, 0);
-            state.boxes.setBit(potential_box_new_pos);
-            state.pusher = pusher_new_pos;
-            return true;
-         }
-         else
+         if (walls.getBit(potential_box_new_pos) || state.boxes.getBit(potential_box_new_pos) ||
+            (!win.getBit(potential_box_new_pos) &&
+            ((walls.getBit(potential_box_new_pos.x + 1, potential_box_new_pos.y) || walls.getBit(potential_box_new_pos.x - 1, potential_box_new_pos.y)) &&
+            (walls.getBit(potential_box_new_pos.x, potential_box_new_pos.y - 1) || walls.getBit(potential_box_new_pos.x, potential_box_new_pos.y - 1)))))
          {
             return false;
          }
+         state.boxes.setBit(pusher_new_pos, 0);
+         state.boxes.setBit(potential_box_new_pos);
       }
 
       state.pusher = pusher_new_pos;
@@ -252,25 +250,25 @@ int main()
             }
 
             state_copy = current_state.first;
-            if (move('U', state_copy, wall_bitboard))
+            if (move('U', state_copy, wall_bitboard, win_bitboard))
             {
                states.push({ state_copy, current_state.second + 'U' });
                state_copy = current_state.first;
             }
 
-            if (move('L', state_copy, wall_bitboard))
+            if (move('L', state_copy, wall_bitboard, win_bitboard))
             {
                states.push({ state_copy, current_state.second + 'L' });
                state_copy = current_state.first;
             }
 
-            if (move('R', state_copy, wall_bitboard))
+            if (move('R', state_copy, wall_bitboard, win_bitboard))
             {
                states.push({ state_copy, current_state.second + 'R' });
                state_copy = current_state.first;
             }
 
-            if (move('D', state_copy, wall_bitboard))
+            if (move('D', state_copy, wall_bitboard, win_bitboard))
             {
                states.push({ state_copy, current_state.second + 'D' });
             }
