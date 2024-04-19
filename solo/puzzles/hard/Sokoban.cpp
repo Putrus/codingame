@@ -164,7 +164,7 @@ bool move(char move, State& state, const Bitboard& walls, const Bitboard& win)
          if (walls.getBit(potential_box_new_pos) || state.boxes.getBit(potential_box_new_pos) ||
             (!win.getBit(potential_box_new_pos) &&
             ((walls.getBit(potential_box_new_pos.x + 1, potential_box_new_pos.y) || walls.getBit(potential_box_new_pos.x - 1, potential_box_new_pos.y)) &&
-            (walls.getBit(potential_box_new_pos.x, potential_box_new_pos.y - 1) || walls.getBit(potential_box_new_pos.x, potential_box_new_pos.y - 1)))))
+            (walls.getBit(potential_box_new_pos.x, potential_box_new_pos.y + 1) || walls.getBit(potential_box_new_pos.x, potential_box_new_pos.y - 1)))))
          {
             return false;
          }
