@@ -78,6 +78,7 @@
       "xutility": "cpp",
       "xstddef": "cpp",
       "stack": "cpp",
-      "ranges": "cpp"
+      "ranges": "cpp",
+      "bitset": "cpp"
    }
 }
