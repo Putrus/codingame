@@ -150,7 +150,14 @@ Position getMoveDirection(char move)
    return { 0, 0 };
 }
 
-bool move(char move, State& state, const Bitboard& walls, const Bitboard& win)
+enum class Move
+{
+   Impossible = 0,
+   Push,
+   Run
+};
+
+Move move(char move, State& state, const Bitboard& walls, const Bitboard& win)
 {
    Position direction = getMoveDirection(move);
 
@@ -166,18 +173,20 @@ bool move(char move, State& state, const Bitboard& walls, const Bitboard& win)
             ((walls.getBit(potential_box_new_pos.x + 1, potential_box_new_pos.y) || walls.getBit(potential_box_new_pos.x - 1, potential_box_new_pos.y)) &&
             (walls.getBit(potential_box_new_pos.x, potential_box_new_pos.y + 1) || walls.getBit(potential_box_new_pos.x, potential_box_new_pos.y - 1)))))
          {
-            return false;
+            return Move::Impossible;
          }
          state.boxes.setBit(pusher_new_pos, 0);
          state.boxes.setBit(potential_box_new_pos);
+         state.pusher = pusher_new_pos;
+         return Move::Push;
       }
 
       state.pusher = pusher_new_pos;
-      return true;
+      return Move::Run;
    }
    else
    {
-      return false;
+      return Move::Impossible;
    }
 }
 
@@ -210,6 +219,7 @@ int main()
    int turn = 0;
    std::string moves;
    State state_copy;
+   Move ret = Move::Impossible;
    while (1)
    {
       Position pusher;
@@ -223,13 +233,13 @@ int main()
 
       if (turn == 0)
       {
-         std::stack<std::pair<State, std::string>> states;
-         states.push({ { pusher, boxes }, "" });
+         std::deque<std::pair<State, std::string>> states;
+         states.push_back({ { pusher, boxes }, "" });
          std::unordered_set<State> history;
          while (!states.empty())
          {
-            auto current_state = states.top();
-            states.pop();
+            auto current_state = states.front();
+            states.pop_front();
 
             if (current_state.first.boxes == win_bitboard)
             {
@@ -250,29 +260,22 @@ int main()
             }
 
             state_copy = current_state.first;
-            if (move('U', state_copy, wall_bitboard, win_bitboard))
+            for (char next_move : "ULRD")
             {
-               states.push({ state_copy, current_state.second + 'U' });
-               state_copy = current_state.first;
-            }
-
-            if (move('L', state_copy, wall_bitboard, win_bitboard))
-            {
-               states.push({ state_copy, current_state.second + 'L' });
-               state_copy = current_state.first;
-            }
-
-            if (move('R', state_copy, wall_bitboard, win_bitboard))
-            {
-               states.push({ state_copy, current_state.second + 'R' });
-               state_copy = current_state.first;
-            }
-
-            if (move('D', state_copy, wall_bitboard, win_bitboard))
-            {
-               states.push({ state_copy, current_state.second + 'D' });
-            }
-            
+               ret = move(next_move, state_copy, wall_bitboard, win_bitboard);
+               if (ret != Move::Impossible)
+               {
+                  if (ret == Move::Push)
+                  {
+                     states.push_front({ state_copy, current_state.second + next_move });
+                  }
+                  else
+                  {
+                     states.push_back({ state_copy, current_state.second + next_move });
+                  }
+                  state_copy = current_state.first;
+               }
+            }            
          }
       }
 
