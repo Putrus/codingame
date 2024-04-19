@@ -10,8 +10,8 @@ constexpr int MAX_BOARD_SIZE = 11;
 
 struct Position
 {
-   int x;
-   int y;
+   int x = 0;
+   int y = 0;
 };
 
 std::istream& operator>>(std::istream& is, Position& position)
@@ -32,8 +32,8 @@ Position operator+(const Position& lhs, const Position& rhs)
 
 struct Bitboard
 {
-   long long a;
-   long long b;
+   long long a = 0;
+   long long b = 0;
 
    long long getIndex(int x, int y) const
    {
@@ -192,6 +192,7 @@ int main()
    }
    // game loop
    int turn = 0;
+   std::string moves;
    while (1)
    {
       Position pusher;
@@ -202,9 +203,7 @@ int main()
          std::cin >> box; std::cin.ignore();
          boxes.setBit(box);
       }
-
-      std::string moves;
-
+      
       if (turn == 0)
       {
          std::stack<std::pair<State, std::string>> states;
@@ -214,18 +213,15 @@ int main()
          {
             auto current_state = states.top();
             states.pop();
-            std::cerr << current_state.second << std::endl;
 
             if (current_state.first.boxes == win_bitboard)
             {
-               std::cerr << "WIN: " << current_state.second << std::endl;
                moves = std::move(current_state.second);
                break;
             }
 
             if (std::find(history.begin(), history.end(), current_state.first) != history.end())
             {
-               std::cerr << "Find the same: " << current_state.second << std::endl;
                continue;
             }
 
@@ -234,25 +230,25 @@ int main()
             State state_copy = current_state.first;
             if (move('U', state_copy, wall_bitboard))
             {
-               states.push({state_copy, current_state.second + 'U'});
+               states.push({ state_copy, current_state.second + 'U' });
             }
 
             state_copy = current_state.first;
             if (move('L', state_copy, wall_bitboard))
             {
-               states.push({state_copy, current_state.second + 'L'});
+               states.push({ state_copy, current_state.second + 'L' });
             }
 
             state_copy = current_state.first;
             if (move('R', state_copy, wall_bitboard))
             {
-               states.push({state_copy, current_state.second + 'R'});
+               states.push({ state_copy, current_state.second + 'R' });
             }
 
             state_copy = current_state.first;
             if (move('D', state_copy, wall_bitboard))
             {
-               states.push({state_copy, current_state.second + 'D'});
+               states.push({ state_copy, current_state.second + 'D' });
             }
             
          }
