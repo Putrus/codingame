@@ -244,7 +244,7 @@ int main()
 
             history.insert(current_state.first);
 
-            if (moves.size() >= 400)
+            if (current_state.second.size() >= 400)
             {
                continue;
             }
@@ -276,6 +276,7 @@ int main()
          }
       }
 
+      std::cerr << moves.size() << std::endl;
       std::cout << moves[turn] << std::endl;
       ++turn;
    }
