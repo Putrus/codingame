@@ -2,25 +2,26 @@
 #include <string>
 #include <vector>
 #include <unordered_set>
+#include <map>
+#include <optional>
 
 enum class Move : int
 {
-   Start = 0,
-   Up,
+   Up = 0,
    Down,
    Left,
    Right
 };
 
+bool operator<(Move lhs, Move rhs)
+{
+   return static_cast<int>(lhs) < static_cast<int>(rhs);
+}
+
 std::ostream& operator<<(std::ostream& os, const Move& move)
 {
    switch (move)
    {
-      case Move::Start:
-      {
-         os << "START";
-         break;
-      }
       case Move::Up:
       {
          os << "UP";
@@ -110,8 +111,14 @@ int main()
    std::cin >> r >> c >> a; std::cin.ignore();
 
    Phase phase = Phase::LookingForC;
-   Move last_move = Move::Start;
+   Move last_move = Move::Right;
    std::unordered_set<Position> history;
+
+   std::map<Move, std::vector<Move>> moves_priority =
+      { { Move::Up, { Move::Up, Move::Left, Move::Right, Move::Down } },
+      { Move::Down, { Move::Down, Move::Left, Move::Right, Move::Up } },
+      { Move::Left, { Move::Left, Move::Up, Move::Down, Move::Right } },
+      { Move::Right, { Move::Right, Move::Up, Move::Down, Move::Left } } };
 
    // game loop
    while (1)
@@ -146,35 +153,64 @@ int main()
       {
          case Phase::LookingForC:
          {
-            if ((maze[kr][kc + 1] == '.' || maze[kr][kc + 1] == 'T' || maze[kr][kc + 1] == 'C') &&
-               history.find(Position{ kr, kc, static_cast<int>(Move::Right) }) == history.end())
+            std::optional<Move> new_move;
+            std::vector<Move> possible_moves;
+            for (const auto& potential_next_move : moves_priority[last_move])
             {
-               last_move = Move::Right;
-               history.insert(Position{ kr, kc, static_cast<int>(last_move) });
+               Position new_pos = { kc, kr, 0 };
+               switch (potential_next_move)
+               {
+                  case Move::Up:
+                  {
+                     --new_pos.y;
+                     break;
+                  }
+                  case Move::Down:
+                  {
+                     ++new_pos.y;
+                     break;
+                  }
+                  case Move::Right:
+                  {
+                     ++new_pos.x;
+                     break;
+                  }
+                  case Move::Left:
+                  {
+                     --new_pos.x;
+                     break;
+                  }
+                  default:
+                  {
+                     std::cerr << "Wrong move" << std::endl;
+                     break;
+                  }
+               }
+            
+               if ((maze[new_pos.y][new_pos.x] == '.' || maze[new_pos.y][new_pos.x] == 'T' || maze[new_pos.y][new_pos.x] == 'C'))
+               {
+                  possible_moves.push_back(potential_next_move);
+                  if (history.find(Position{ kr, kc, static_cast<int>(potential_next_move) }) == history.end())
+                  {
+                     new_move = potential_next_move;
+                     history.insert(Position{ kr, kc, static_cast<int>(last_move) });
+                     break;
+                  }  
+               }
             }
-            else if ((maze[kr][kc - 1] == '.' || maze[kr][kc - 1] == 'T' || maze[kr][kc - 1] == 'C') &&
-               history.find(Position{ kr, kc, static_cast<int>(Move::Left) }) == history.end())
+
+            if (new_move)
             {
-               last_move = Move::Left;
-               history.insert(Position{ kr, kc, static_cast<int>(last_move) });
+               last_move = new_move.value();
             }
-            else if ((maze[kr + 1][kc] == '.' || maze[kr + 1][kc] == 'T' || maze[kr + 1][kc] == 'C') &&
-               history.find(Position{ kr, kc, static_cast<int>(Move::Down) }) == history.end())
+            else if (!possible_moves.empty())
             {
-               last_move = Move::Down;
-               history.insert(Position{ kr, kc, static_cast<int>(last_move) });
-            }
-            else if ((maze[kr - 1][kc] == '.' || maze[kr - 1][kc] == 'T' || maze[kr - 1][kc] == 'C') &&
-               history.find(Position{ kr, kc, static_cast<int>(Move::Up) }) == history.end())
-            {
-               last_move = Move::Up;
-               history.insert(Position{ kr, kc, static_cast<int>(last_move) });
+               last_move = possible_moves[0];
             }
             else
             {
-               std::cerr << "What the fuck?" << std::endl;
+               std::cerr << "No possible moves" << std::endl;
             }
-            
             std::cout << last_move << std::endl;
             break;
          }
