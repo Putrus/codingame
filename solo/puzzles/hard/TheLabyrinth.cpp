@@ -135,13 +135,11 @@ int main()
          std::unordered_set<Position> history;
          std::deque<std::pair<Position, Move>> que;
          que.push_back({ { kc, kr }, Move::Start });
-         std::cerr << "Wanted = " << wanted << std::endl;
+         history.insert({ kc, kr });
          while (!que.empty())
          {
             auto current_pos = que.front();
             que.pop_front();
-
-            history.insert(current_pos.first);
 
             if (maze[current_pos.first.y][current_pos.first.x] == wanted)
             {
@@ -187,10 +185,12 @@ int main()
                   if (current_pos.second == Move::Start)
                   {
                      que.push_back({ new_pos, next_move });
+                     history.insert(new_pos);
                   }
                   else
                   {
                      que.push_back({ new_pos, current_pos.second });
+                     history.insert(new_pos);
                   }
                }
             }
