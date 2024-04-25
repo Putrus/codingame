@@ -45,36 +45,44 @@ int main()
       to_visit.pop();
       maze[pos.first.y][pos.first.x] = pos.second >= 10 ? pos.second + 'A' - 10 : pos.second + '0';
 
+      if (maze[pos.first.y][pos.first.x] > 'Z')
+      {
+         continue;
+      }
+
       int new_x = (pos.first.x - 1 + maze[pos.first.y].size()) % maze[pos.first.y].size();
       if (maze[pos.first.y][new_x] == '.' ||
          maze[pos.first.y][new_x] > maze[pos.first.y][pos.first.x] + 1)
       {
-         to_visit.push({ { pos.first.x - 1, pos.first.y }, pos.second + 1 });
+         to_visit.push({ { new_x, pos.first.y }, pos.second + 1 });
       }
 
-      if (maze[(pos.first.y - 1 + maze.size()) % maze.size()][pos.first.x] == '.' ||
-         maze[(pos.first.y - 1 + maze.size()) % maze.size()][pos.first.x] > maze[pos.first.y][pos.first.x] + 1)
+      int new_y = (pos.first.y - 1 + maze.size()) % maze.size();
+      if (maze[new_y][pos.first.x] == '.' ||
+         maze[new_y][pos.first.x] > maze[pos.first.y][pos.first.x] + 1)
       {
-         to_visit.push({ { pos.first.x, pos.first.y - 1 }, pos.second + 1 });
+         to_visit.push({ { pos.first.x, new_y }, pos.second + 1 });
       }
 
-      if (maze[pos.first.y][(pos.first.x + 1) % maze[pos.first.y].size()] == '.' ||
-         maze[pos.first.y][(pos.first.x + 1) % maze[pos.first.y].size()] > maze[pos.first.y][pos.first.x] + 1)
+      new_x = (pos.first.x + 1) % maze[pos.first.y].size();
+      if (maze[pos.first.y][new_x] == '.' ||
+         maze[pos.first.y][new_x] > maze[pos.first.y][pos.first.x] + 1)
       {
-         to_visit.push({ { pos.first.x + 1, pos.first.y }, pos.second + 1 });
+         to_visit.push({ { new_x, pos.first.y }, pos.second + 1 });
       }
 
-      if (maze[(pos.first.y + 1) % maze.size()][pos.first.x] == '.' ||
-         maze[(pos.first.y + 1) % maze.size()][pos.first.x] > maze[pos.first.y][pos.first.x] + 1)
+      new_y = (pos.first.y + 1) % maze.size();
+      if (maze[new_y][pos.first.x] == '.' ||
+         maze[new_y][pos.first.x] > maze[pos.first.y][pos.first.x] + 1)
       {
-         to_visit.push({ { pos.first.x, pos.first.y + 1 }, pos.second + 1 });
+         to_visit.push({ { pos.first.x, new_y }, pos.second + 1 });
       }
 
-      for (const auto& row : maze)
-      {
-         std::cerr << row << std::endl;
-      }
-      std::cerr << std::endl;
+      // for (const auto& row : maze)
+      // {
+      //    std::cerr << row << std::endl;
+      // }
+      // std::cerr << std::endl;
    }
 
    for (const auto& row : maze)
