@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <map>
 
 int main()
 {
@@ -14,11 +15,13 @@ int main()
    // game loop
    while (1)
    {
+      std::map<int, int> distances_to_hurdles;
       for (int i = 0; i < 3; i++)
       {
          std::string score_info;
          getline(std::cin, score_info);
       }
+      std::cerr << "nb_games = " << nb_games << std::endl;
       for (int i = 0; i < nb_games; i++)
       {
          std::string gpu;
@@ -32,30 +35,77 @@ int main()
          std::cin >> gpu >> reg_0 >> reg_1 >> reg_2 >> reg_3 >> reg_4 >> reg_5 >> reg_6; std::cin.ignore();
 
          racetrack = gpu;
-
-         if (player_idx == 0)
+         if (player_idx == 0 && reg_3 != 0)
          {
-            player_position = reg_0;
+            continue;
          }
-         else if (player_idx == 1)
+
+         if (player_idx == 1 && reg_4 != 0)
          {
-            player_position = reg_1;
+            continue;
+         }
+
+         if (player_idx == 2 && reg_5 != 0)
+         {
+            continue;
+         }
+         
+         int dist = 1;
+         for (int j = player_position + 1; j < racetrack.size(); ++j)
+         {
+            if (racetrack[j] == '#')
+            {
+               break;
+            }
+            ++dist;
+         }
+
+         if (dist >= 4)
+         {
+            if (distances_to_hurdles.find(4) == distances_to_hurdles.end())
+            {
+               distances_to_hurdles.insert({ 4, 1 });
+            }
+            else
+            {
+               ++distances_to_hurdles[4];
+            }
          }
          else
          {
-            player_position = reg_2;
+            if (distances_to_hurdles.find(dist) == distances_to_hurdles.end())
+            {
+               distances_to_hurdles.insert({ dist, 1 });
+            }
+            else
+            {
+               ++distances_to_hurdles[dist];
+            }
+            
          }
       }
 
-      if (player_position + 1 < racetrack.size() && racetrack[player_position + 1] == '#')
+      std::pair<int, int> best = { 0, 0 };
+
+      std::cerr << distances_to_hurdles.size() << std::endl;
+      for (const auto& d : distances_to_hurdles)
+      {
+         std::cerr << d.first << " " << d.second << std::endl;
+         if (d.second >= best.second)
+         {
+            best = d;
+         }
+      }
+
+      if (best.first == 1)
       {
          std::cout << "UP" << std::endl;
       }
-      else if (player_position + 2 < racetrack.size() && racetrack[player_position + 2] == '#')
+      else if (best.first == 2)
       {
          std::cout << "LEFT" << std::endl;
       }
-      else if (player_position + 3 < racetrack.size() && racetrack[player_position + 3] == '#')
+      else if (best.first == 3)
       {
          std::cout << "DOWN" << std::endl;
       }
