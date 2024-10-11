@@ -139,6 +139,10 @@ void Game::attack()
       {
          if (it->abilities.find('G') != std::string::npos)
          {
+            if (card.attack <= 0)
+            {
+               continue;
+            }
             std::cout << "ATTACK " << card.id << " " << it->id << ";"; 
             it->defense -= card.attack;
             target = it->id;
@@ -154,7 +158,7 @@ void Game::attack()
          }
       }
 
-      if (target == -1)
+      if (target == -1 && card.attack > 0)
       {
          std::cout << "ATTACK " << card.id << " " << target << ";"; 
       }
@@ -275,7 +279,12 @@ void Game::summon()
                continue;
             }
             player.mana -= card.cost;
-            std::cout << "USE " << card.id << " " << player.board[0].id << ";";
+
+            auto best = std::max_element(player.board.begin(), player.board.end(), [](const auto& lhs, const auto& rhs)
+               {
+                  return (lhs.attack + lhs.defense) < (rhs.attack + rhs.defense);
+               });
+            std::cout << "USE " << card.id << " " << best->id << ";";
          }
          else if (card.type == Card::Type::RedItem)
          {
