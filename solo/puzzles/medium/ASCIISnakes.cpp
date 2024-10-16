@@ -2,7 +2,8 @@
 #include <string>
 #include <vector>
 
-void rtrim(std::string& str) {
+void rtrim(std::string& str)
+{
    str.erase(std::find_if(str.rbegin(), str.rend(),
    [](unsigned char ch)
    {
