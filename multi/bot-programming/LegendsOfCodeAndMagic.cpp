@@ -134,15 +134,15 @@ void Game::attack()
 {
    for (const Card& card : player.board)
    {
+      if (card.attack <= 0)
+      {
+         continue;
+      }
       int target = -1;
       for (auto it = opponent.board.begin(); it != opponent.board.end();)
       {
          if (it->abilities.find('G') != std::string::npos)
          {
-            if (card.attack <= 0)
-            {
-               continue;
-            }
             std::cout << "ATTACK " << card.id << " " << it->id << ";"; 
             it->defense -= card.attack;
             target = it->id;
@@ -252,15 +252,16 @@ void Game::summon()
       guard_id = find_guard->id;
       player.mana -= find_guard->cost;
       std::cout << "SUMMON " << find_guard->id << ";";
+      if (find_guard->abilities.find('C') != std::string::npos)
+      {
+         player.board.push_back(*find_guard);
+      }
+
+      player.hand.erase(find_guard);
    }
 
    for (const Card& card : player.hand)
    {
-      if (card.id == guard_id)
-      {
-         continue;
-      }
-
       if (card.cost <= player.mana)
       {
          if (card.type == Card::Type::Creature)
@@ -294,6 +295,11 @@ void Game::summon()
             }
             player.mana -= card.cost;
             std::cout << "USE " << card.id << " " << opponent.board[0].id << ";";
+            opponent.board[0].defense += card.defense;
+            if (opponent.board[0].defense <= 0)
+            {
+               opponent.board.erase(opponent.board.begin());
+            }
          }
          else
          {
