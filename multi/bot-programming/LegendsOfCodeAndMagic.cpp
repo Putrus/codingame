@@ -132,6 +132,13 @@ void Game::run()
 
 void Game::attack()
 {
+   std::vector<Card> opponent_guard_cards;
+   std::copy_if(opponent.board.begin(), opponent.board.end(), std::back_inserter(opponent_guard_cards),
+      [](const Card& card)
+      {
+         return card.abilities.find('G') != std::string::npos;
+      });
+
    for (const Card& card : player.board)
    {
       if (card.attack <= 0)
@@ -139,29 +146,51 @@ void Game::attack()
          continue;
       }
       int target = -1;
-      for (auto it = opponent.board.begin(); it != opponent.board.end();)
-      {
-         if (it->abilities.find('G') != std::string::npos)
+
+      auto best_target = std::max_element(opponent_guard_cards.begin(), opponent_guard_cards.end(),
+         [card](const Card& lhs, const Card& rhs)
          {
-            std::cout << "ATTACK " << card.id << " " << it->id << ";"; 
-            it->defense -= card.attack;
-            target = it->id;
-            if (it->defense < 0)
-            {
-               it = opponent.board.erase(it);
-            }
-            break;
+            auto calc_points = [](const Card& player_card, const Card& opponent_card) -> int
+               {
+                  int score = 0;
+                  score += std::min(player_card.attack, opponent_card.defense);
+                  score -= std::min(player_card.defense, opponent_card.attack);
+                  if (player_card.defense - opponent_card.attack <= 0)
+                  {
+                     score -= player_card.attack;
+                  }
+
+                  if (opponent_card.defense - player_card.attack <= 0)
+                  {
+                     score += opponent_card.attack;
+                  }
+
+                  return score;
+               };
+
+            return calc_points(card, lhs) < calc_points(card, rhs);
+         });
+
+      if (best_target != opponent_guard_cards.end())
+      {
+         target = best_target->id;
+
+         size_t wand_pos = best_target->abilities.find('W');
+         if (wand_pos != std::string::npos)
+         {
+            best_target->abilities[wand_pos] = '-';
          }
          else
          {
-            ++it;
+            best_target->defense -= card.attack;
+            if (best_target->defense <= 0 || card.abilities.find('L') != std::string::npos)
+            {
+               opponent_guard_cards.erase(best_target);
+            }
          }
       }
 
-      if (target == -1 && card.attack > 0)
-      {
-         std::cout << "ATTACK " << card.id << " " << target << ";"; 
-      }
+      std::cout << "ATTACK " << card.id << " " << target << ";"; 
    }
 
    std::cout << std::endl;
@@ -182,17 +211,33 @@ void Game::clear()
 
 void Game::draft() const
 {
-   int pick = std::rand() % 3;
+   double best_score = 0;
+   int best_index = 0;
    for (size_t i = 0; i < player.hand.size(); ++i)
    {
-      if (player.hand[i].abilities.find('G') != std::string::npos)
+      double score = player.hand[i].attack + player.hand[i].defense;
+      for (char c : player.hand[i].abilities)
       {
-         pick = i;
-         break;
+         ++score;
+      }
+
+      if (player.hand[i].cost != 0)
+      {
+         score /= static_cast<double>(player.hand[i].cost);
+      }
+      else
+      {
+         score /= 0.1;
+      }
+
+      if (score > best_score)
+      {
+         best_score = score;
+         best_index = i;
       }
    }
 
-   std::cout << "PICK " << pick << std::endl;
+   std::cout << "PICK " << best_index << std::endl;
 }
 
 void Game::input()
@@ -285,7 +330,17 @@ void Game::summon()
                {
                   return (lhs.attack + lhs.defense) < (rhs.attack + rhs.defense);
                });
+
             std::cout << "USE " << card.id << " " << best->id << ";";
+            best->attack += card.attack;
+            best->defense += card.defense;
+            for (size_t i = 0; i < card.abilities.size(); ++i)
+            {
+               if (card.abilities[i] != '-')
+               {
+                  best->abilities[i] = card.abilities[i];
+               }
+            }
          }
          else if (card.type == Card::Type::RedItem)
          {
