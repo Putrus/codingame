@@ -1,10 +1,10 @@
-   #include <iostream>
-   #include <string>
-   #include <vector>
-   #include <algorithm>
-   #include <map>
-   #include <iomanip>
-   #include <cmath>
+#include <iostream>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <map>
+#include <iomanip>
+#include <cmath>
 
 void toUpper(std::string& str)
 {
