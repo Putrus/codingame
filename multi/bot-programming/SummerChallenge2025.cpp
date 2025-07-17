@@ -3,6 +3,7 @@
 #include <vector>
 #include <algorithm>
 #include <map>
+#include <limits>
 
 using namespace std;
 
@@ -62,6 +63,7 @@ int main()
         int agent_count; // Total number of agents still in the game
         cin >> agent_count; cin.ignore();
         std::map<int, MyAgent> my_agents;
+        std::map<int, MyAgent> enemy_agents;
         for (int i = 0; i < agent_count; i++)
         {
             int agent_id;
@@ -75,13 +77,27 @@ int main()
             {
                 my_agents.insert({ agent_id, MyAgent{x , y, cooldown, splash_bombs, wetness }});
             }
+            else
+            {
+                enemy_agents.insert({ agent_id, MyAgent{x , y, cooldown, splash_bombs, wetness }});
+            }
         }
         int my_agent_count; // Number of alive agents controlled by you
         cin >> my_agent_count; cin.ignore();
 
-        for (auto my_agent : my_agents)
+        for (const auto& my_agent : my_agents)
         {
-            cout << my_agent.first << "; MOVE 6 1" << endl; 
+            int shoot_agent_id = 0;
+            int highest_wetness = std::numeric_limits<int>::min();
+            for (const auto& enemy_agent : enemy_agents)
+            {
+                if (enemy_agent.second.wetness > highest_wetness)
+                {
+                    shoot_agent_id = enemy_agent.first;
+                    highest_wetness = enemy_agent.second.wetness;
+                }
+            }
+            cout << my_agent.first << "; SHOOT " << shoot_agent_id << endl; 
         }
     }
 }
