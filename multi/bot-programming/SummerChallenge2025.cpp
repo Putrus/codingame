@@ -67,6 +67,12 @@ int main()
         grid.push_back(row);
     }
 
+    std::vector<std::pair<int, int>> corners;
+    corners.push_back({ grid[0].size() - 3, grid.size() - 3 });
+    corners.push_back({ grid[0].size() - 3, 2});
+    corners.push_back({ 2, grid.size() - 3 });
+    corners.push_back({ 2, 2 });
+    int trapped_player = 0;
     // game loop
     while (1)
     {
@@ -95,55 +101,67 @@ int main()
         int my_agent_count; // Number of alive agents controlled by you
         cin >> my_agent_count; cin.ignore();
 
+        std::cerr << grid.size() << std::endl;
+
         for (const auto& my_agent : my_agents)
         {
-            int shoot_agent_id = 0;
-            int lowest_cover = std::numeric_limits<int>::max();
-            int distance = std::numeric_limits<int>::max();
-            for (const auto& enemy_agent : enemy_agents)
+            std::pair<int, int> throw_destination = { 0, 0 };
+            int shortest_corner_distance = std::numeric_limits<int>::max();
+            for (const auto& corner : corners)
             {
-                if (abs(enemy_agent.second.x - my_agent.second.x) > 4)
+                int corner_distance = std::sqrt((corner.first - my_agent.second.x) * (corner.first - my_agent.second.x) +
+                    (corner.second - my_agent.second.y) * (corner.second - my_agent.second.y));
+                if (corner_distance < shortest_corner_distance)
                 {
-                    continue;
+                    throw_destination = corner;
+                    shortest_corner_distance = corner_distance;
                 }
-                int d = std::sqrt((enemy_agent.second.x - my_agent.second.x) * (enemy_agent.second.x - my_agent.second.x) -
-                    (enemy_agent.second.y - my_agent.second.y) * (enemy_agent.second.y - my_agent.second.y));
-                if (enemy_agent.second.x < my_agent.second.x)
+            }
+            
+            int throw_distance = shortest_corner_distance;
+            std::cerr << "throw_x = " << throw_destination.first << endl;
+            std::cerr << "throw_y = " << throw_destination.second << endl;
+            std::cerr << "my_x = " << my_agent.second.x << endl;
+            std::cerr << "my_y = " << my_agent.second.y << endl;
+            if ((abs(throw_destination.first - my_agent.second.x) <= 3 && throw_destination.second == my_agent.second.y)  ||
+                (abs(throw_destination.second - my_agent.second.y) <= 3 && throw_destination.first == my_agent.second.x) ||
+                throw_distance <= 2)
+            {
+                if (trapped_player == 0)
                 {
-                    if (grid[enemy_agent.second.y][enemy_agent.second.x + 1] < lowest_cover ||
-                        (grid[enemy_agent.second.y][enemy_agent.second.x + 1] == lowest_cover && d < distance))
+                    corners.erase(remove_if(corners.begin(), corners.end(), [throw_destination](const auto& corner)
                     {
-                        shoot_agent_id = enemy_agent.first;
-                        lowest_cover = grid[enemy_agent.second.y][enemy_agent.second.x + 1];
-                        distance = d;
-                    }
+                        return corner == throw_destination;
+                    }), corners.end());
+                    trapped_player  = my_agent.first;
+                }
+
+                if (my_agent.first != trapped_player)
+                {
+                    corners.erase(remove_if(corners.begin(), corners.end(), [throw_destination](const auto& corner)
+                    {
+                        return corner == throw_destination;
+                    }), corners.end());
+                    cout << my_agent.first << "; THROW " << throw_destination.first << " " << throw_destination.second;
                 }
                 else
                 {
-                    if (grid[enemy_agent.second.y][enemy_agent.second.x - 1] < lowest_cover ||
-                        (grid[enemy_agent.second.y][enemy_agent.second.x - 1] == lowest_cover && d < distance))
-                    {
-                        shoot_agent_id = enemy_agent.first;
-                        lowest_cover = grid[enemy_agent.second.y][enemy_agent.second.x - 1];
-                        distance = d;
-                    }
+                    cout << my_agent.first << "; MOVE " << throw_destination.first << " " << throw_destination.second;
                 }
             }
-            int move_x = 0;
-            int move_y = 0;
-            distance = std::numeric_limits<int>::max();
-            for (const auto& cover : high_covers)
+            else
             {
-                int d = std::sqrt((cover.first - my_agent.second.x) * (cover.first - my_agent.second.x) -
-                    (cover.second - my_agent.second.y) * (cover.second - my_agent.second.y));
-                if (d < distance)
+                if (throw_destination.first >= 6)
                 {
-                    move_x = cover.first;
-                    move_y = cover.second;
-                    distance = d;
+                    throw_destination.first -= 3;
                 }
+                else
+                {
+                    throw_destination.first += 3;
+                }
+                cout << my_agent.first << "; MOVE " << throw_destination.first << " " << throw_destination.second;
             }
-            cout << my_agent.first << "; MOVE " << move_x << " " << move_y << "; SHOOT " << shoot_agent_id << endl; 
+            cout << endl;
         }
     }
 }
