@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <map>
 #include <limits>
+#include <cmath>
 
 using namespace std;
 
@@ -46,15 +47,24 @@ int main()
     int width; // Width of the game map
     int height; // Height of the game map
     cin >> width >> height; cin.ignore();
+    std::vector<std::pair<int, int>> high_covers;
+    std::vector<std::vector<int>> grid;
     for (int i = 0; i < height; i++)
     {
+        std::vector<int> row;
         for (int j = 0; j < width; j++)
         {
             int x; // X coordinate, 0 is left edge
             int y; // Y coordinate, 0 is top edge
             int tile_type;
             cin >> x >> y >> tile_type; cin.ignore();
+            if (tile_type == 2)
+            {
+                high_covers.push_back({ x, y });
+            }
+            row.push_back(tile_type);
         }
+        grid.push_back(row);
     }
 
     // game loop
@@ -88,16 +98,52 @@ int main()
         for (const auto& my_agent : my_agents)
         {
             int shoot_agent_id = 0;
-            int highest_wetness = std::numeric_limits<int>::min();
+            int lowest_cover = std::numeric_limits<int>::max();
+            int distance = std::numeric_limits<int>::max();
             for (const auto& enemy_agent : enemy_agents)
             {
-                if (enemy_agent.second.wetness > highest_wetness)
+                if (abs(enemy_agent.second.x - my_agent.second.x) > 4)
                 {
-                    shoot_agent_id = enemy_agent.first;
-                    highest_wetness = enemy_agent.second.wetness;
+                    continue;
+                }
+                int d = std::sqrt((enemy_agent.second.x - my_agent.second.x) * (enemy_agent.second.x - my_agent.second.x) -
+                    (enemy_agent.second.y - my_agent.second.y) * (enemy_agent.second.y - my_agent.second.y));
+                if (enemy_agent.second.x < my_agent.second.x)
+                {
+                    if (grid[enemy_agent.second.y][enemy_agent.second.x + 1] < lowest_cover ||
+                        (grid[enemy_agent.second.y][enemy_agent.second.x + 1] == lowest_cover && d < distance))
+                    {
+                        shoot_agent_id = enemy_agent.first;
+                        lowest_cover = grid[enemy_agent.second.y][enemy_agent.second.x + 1];
+                        distance = d;
+                    }
+                }
+                else
+                {
+                    if (grid[enemy_agent.second.y][enemy_agent.second.x - 1] < lowest_cover ||
+                        (grid[enemy_agent.second.y][enemy_agent.second.x - 1] == lowest_cover && d < distance))
+                    {
+                        shoot_agent_id = enemy_agent.first;
+                        lowest_cover = grid[enemy_agent.second.y][enemy_agent.second.x - 1];
+                        distance = d;
+                    }
                 }
             }
-            cout << my_agent.first << "; SHOOT " << shoot_agent_id << endl; 
+            int move_x = 0;
+            int move_y = 0;
+            distance = std::numeric_limits<int>::max();
+            for (const auto& cover : high_covers)
+            {
+                int d = std::sqrt((cover.first - my_agent.second.x) * (cover.first - my_agent.second.x) -
+                    (cover.second - my_agent.second.y) * (cover.second - my_agent.second.y));
+                if (d < distance)
+                {
+                    move_x = cover.first;
+                    move_y = cover.second;
+                    distance = d;
+                }
+            }
+            cout << my_agent.first << "; MOVE " << move_x << " " << move_y << "; SHOOT " << shoot_agent_id << endl; 
         }
     }
 }
