@@ -78,8 +78,8 @@ int main()
 
    std::vector<std::string> grid(500, std::string(500, ' '));
 
-   Position position  = { grid.size() / 2, grid.size() / 2 };
-   
+   Position position = { grid.size() / 2, grid.size() / 2 };
+
    if (message.empty())
    {
       return 0;
@@ -98,14 +98,14 @@ int main()
       addRectangle(position, grid,
          { "--+",
            "--+" });
-      position.x -= 2;
+      position.x -= 3;
    }
    else if (last_dir == 'R')
    {
       addRectangle(position, grid,
          { "+--",
            "+--" });
-      position.x += 2;
+      position.x += 3;
    }
    else
    {
@@ -114,7 +114,7 @@ int main()
            "+-+" });
       position.y -= 2;
    }
-   
+
    for (int i = 1; i < message.size(); ++i)
    {
       char dir = message[i];
@@ -198,14 +198,14 @@ int main()
          else if (last_dir == 'U')
          {
             addRectangle(position, grid,
-            { "+--",
-              "| +" });
+               { "+--",
+                 "| +" });
          }
          else if (last_dir == 'D')
          {
             addRectangle(position, grid,
-            { "| +",
-              "+--" });
+               { "| +",
+                 "+--" });
          }
 
          position.x += 3;
