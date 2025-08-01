@@ -16,7 +16,8 @@ fn main() {
       let mut j = 0;
 
       while j < line.len() {
-         let mut sub = &input_line[j..j+3];
+         let end = usize::min(j + 3, line.len());
+         let mut sub = &input_line[j..end];
          if sub.chars().nth(0) == Some('f') || (sub.len() == 2 && sub.chars().nth(1) == Some('f')) {
             result += 1;
             j += 3;

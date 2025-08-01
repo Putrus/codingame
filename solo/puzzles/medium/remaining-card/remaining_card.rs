@@ -55,7 +55,7 @@ fn main() {
       p *= 2;
    }
 
-   let mut result = 1
+   let mut result = 1;
    if p != 1 {
       result = (n - p / 2) * 2;
    }
