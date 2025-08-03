@@ -30,7 +30,6 @@ fn main() {
       } else {
          String::new()
       };
-      eprintln!("{}: {}", fname, ext);
       if let Some(mt) = mime.get(&ext) {
          println!("{}", mt);
       } else {
