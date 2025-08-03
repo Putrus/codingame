@@ -25,12 +25,12 @@ fn main() {
       let mut input_line = String::new();
       io::stdin().read_line(&mut input_line).unwrap();
       let fname = input_line.trim_matches('\n').to_string(); // One file name per line.
-      eprintln!("{}: {}", fname, ext);
-      let ext = if fname.contains('.') && fname.rfind('.') != Some(0) {
+      let ext = if fname.contains('.') {
          fname.split('.').last().unwrap_or("").to_lowercase()
       } else {
          String::new()
       };
+      eprintln!("{}: {}", fname, ext);
       if let Some(mt) = mime.get(&ext) {
          println!("{}", mt);
       } else {
