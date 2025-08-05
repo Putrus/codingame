@@ -1,0 +1,1 @@
+while 1:print(max(enumerate(input()for _ in range(8)),key=lambda x:x[1])[0])
