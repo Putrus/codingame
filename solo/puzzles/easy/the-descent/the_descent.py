@@ -1,5 +1,1 @@
-import sys
-import math
-
-while True:
-   print(max(enumerate(int(input()) for _ in range(8)), key=lambda x: x[1])[0])
+while True: print(max(enumerate(int(input()) for _ in range(8)), key=lambda x: x[1])[0])
