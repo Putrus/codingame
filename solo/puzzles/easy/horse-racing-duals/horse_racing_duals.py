@@ -1,0 +1,1 @@
+print((lambda h: min(b - a for a, b in zip(h, h[1:])))(sorted([int(input()) for _ in range(int(input()))])))
