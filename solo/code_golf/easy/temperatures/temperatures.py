@@ -1,0 +1,1 @@
+print(min(map(int,input().split()),key=lambda t:(abs(t),-t))if int(input())else 0)
