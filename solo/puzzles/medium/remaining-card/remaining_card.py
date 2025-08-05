@@ -1,0 +1,1 @@
+print((lambda n: (lambda p: int(1 if p == 1 else (n - p / 2) * 2))(next(p for p in (2**i for i in range(100)) if p >= n)))(int(input())))
