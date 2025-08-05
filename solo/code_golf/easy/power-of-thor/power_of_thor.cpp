@@ -1,0 +1,2 @@
+#include <iostream>
+using namespace std;int main(){int r,i,j,x,y;cin>>i>>j>>x>>y;while(1){cin>>r;if(j<y){cout<<"N";--y;}if(j>y){cout<<"S";++y;}if(i<x){cout<<"W";--x;}if(i>x){cout<<"E";++x;}cout<<endl;}}

@@ -1,0 +1,3 @@
+#include <iostream>
+#include <vector>
+using namespace std;struct G{long long e,n;};int main(){long long l,c,n,b,d,p,i,a,s,e;cin>>l>>c>>n;vector<int>q(n);for(;i<n;i++){cin>>a;q[i]=a;}if(c<n){for(i=0;i<c;++i){p=l;b=d;while(q[d]<=p){s+=q[d];p-=q[d];d=(d+1)%n;if(d==b){break;}}}}else{vector<G>g(n);for(i=0;i<n;++i){d=i;b=d;p=l;e=0;while(q[d]<=p){e+=q[d];p-=q[d];d=(d+1)%n;if(d==b){break;}}g[i]={e,d};}d=0;for(i=0;i<c;++i){s+=g[d].e;d=g[d].n;}}cout<<s;}

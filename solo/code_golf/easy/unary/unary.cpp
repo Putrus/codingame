@@ -1,0 +1,2 @@
+#include <iostream>
+using namespace std;string B(char c){string b;while(c!=0){if(c%2==0){b="0"+b;}else{b="1"+b;}c/=2;}while(b.size()<7){b="0"+b;}return b;}int main(){string m,b;getline(cin,m);char s='x';for(char c:m){b=B(c);for(char i:b){if(i!=s){if(s!='x'){cout<<' ';}s=i;if(s=='1'){cout<<"0 0";}else{cout<<"00 0";}}else{cout<<'0';}}}}
