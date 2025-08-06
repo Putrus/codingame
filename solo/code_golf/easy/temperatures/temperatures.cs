@@ -1,0 +1,1 @@
+using System;class S{static void Main(){int c=999,n=int.Parse(Console.ReadLine()),i,t;var a=Console.ReadLine().Split();for(i=0;i<n;i++){t=int.Parse(a[i]);if(Math.Abs(t)<Math.Abs(c)||(Math.Abs(t)==Math.Abs(c)&&t>0))c=t;}Console.WriteLine(c==999?0:c);}}
