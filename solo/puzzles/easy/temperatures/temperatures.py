@@ -1,1 +1,1 @@
-print(min(list(map(int, input().split())),key=lambda t: (abs(t), -t)) if int(input())else 0)
+print(min(list(map(int, input().split())), key=lambda t: (abs(t), -t)) if int(input()) else 0)
