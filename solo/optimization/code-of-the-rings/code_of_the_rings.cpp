@@ -4,6 +4,29 @@
 
 constexpr int ZONE_SIZE = 30;
 
+int charToVal(char c)
+{
+   return (c == ' ') ? 0 : c - 'A' + 1;
+}
+
+int valToChar(int v)
+{
+   return (v == 0) ? ' ' : 'A' + v - 1;
+}
+
+int shortestDelta(char from, char to)
+{
+   int from_val = charToVal(from);
+   int to_val = charToVal(to);
+
+   int delta = (to_val - from_val + 27) % 27;
+   if (delta > 13)
+   {
+      delta -= 27;
+   }
+   return delta;
+}
+
 int main()
 {
    std::string magic_phrase;
@@ -75,7 +98,8 @@ int main()
          }
          while (runes[position] != magic_phrase[i])
          {
-            if (magic_phrase[i] < runes[position])
+            int delta = shortestDelta(runes[position], magic_phrase[i]);
+            if (delta < 0)
             {
                solution += "-";
                if (runes[position] == ' ')
@@ -91,7 +115,7 @@ int main()
                   --runes[position];
                }
             }
-            else
+            else if (delta >= 0)
             {
                solution += "+";
                if (runes[position] == ' ')
