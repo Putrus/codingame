@@ -2,138 +2,183 @@
 #include <string>
 #include <vector>
 
-constexpr int ZONE_SIZE = 30;
+constexpr int ZONES_SIZE = 30;
+constexpr int ALPHABET_SIZE = 27; // 26 letters + space
 
-int charToVal(char c)
+class Utility
 {
-   return (c == ' ') ? 0 : c - 'A' + 1;
-}
-
-int valToChar(int v)
-{
-   return (v == 0) ? ' ' : 'A' + v - 1;
-}
-
-int shortestDelta(char from, char to)
-{
-   int from_val = charToVal(from);
-   int to_val = charToVal(to);
-
-   int delta = (to_val - from_val + 27) % 27;
-   if (delta > 13)
+public:
+   static int shortestDelta(char from, char to)
    {
-      delta -= 27;
+      int from_val = (from == ' ') ? 0 : from - 'A' + 1;
+      int to_val = (to == ' ') ? 0 : to - 'A' + 1;
+
+      int delta = (to_val - from_val + ALPHABET_SIZE) % ALPHABET_SIZE;
+      if (delta > ALPHABET_SIZE / 2)
+      {
+         delta -= ALPHABET_SIZE;
+      }
+      return delta;
    }
-   return delta;
-}
+
+   static int shortestDistance(int from, int to)
+   {
+      int distance = (to - from + ZONES_SIZE) % ZONES_SIZE;
+      if (distance > ZONES_SIZE / 2)
+      {
+         distance -= ZONES_SIZE;
+      }
+      return distance;
+   }
+};
+
+class Zone
+{
+public:
+   Zone& operator++(int value)
+   {
+      if (rune == ' ')
+      {
+         rune = 'A';
+      }
+      else if (rune == 'Z')
+      {
+         rune = ' ';
+      }
+      else
+      {
+         ++rune;
+      }
+      return *this;
+   }
+
+   Zone& operator--(int value)
+   {
+      if (rune == ' ')
+      {
+         rune = 'Z';
+      }
+      else if (rune == 'A')
+      {
+         rune = ' ';
+      }
+      else
+      {
+         --rune;
+      }
+      return *this;
+   }
+
+   int shortestDelta(char rune) const
+   {
+      return Utility::shortestDelta(this->rune, rune);
+   }
+
+   char getRune() const
+   {
+      return rune;
+   }
+
+private:
+   char rune = ' ';
+};
+
+class Forest
+{
+public:
+   Forest(int zones_size) : zones(std::vector<Zone>(zones_size, Zone())) {}
+   std::vector<Zone> zones;
+};
+
+class Blub
+{
+public:
+   Blub(Forest& forest) : forest(forest) {}
+
+   void applyInstruction(char instruction)
+   {
+      if (instruction == '>')
+      {
+         ++position;
+         if (position >= ZONES_SIZE)
+         {
+            position = 0;
+         }
+      }
+      else if (instruction == '<')
+      {
+         --position;
+         if (position < 0)
+         {
+            position = ZONES_SIZE - 1;
+         }
+      }
+      else if (instruction == '+')
+      {
+         forest.zones[position]++;
+      }
+      else if (instruction == '-')
+      {
+         forest.zones[position]--;
+      }
+      else if (instruction == '.')
+      {
+         phrase += forest.zones[position].getRune();
+      }
+   }
+
+   void applyInstructions(const std::string& instructions)
+   {
+      for (char instruction : instructions)
+      {
+         applyInstruction(instruction);
+      }
+   }
+
+   std::string findBestInstructions(char target_rune)
+   {
+      std::string best_instructions;
+      for (int i = 0; i < forest.zones.size(); ++i)
+      {
+         std::string instructions;
+         int distance = Utility::shortestDistance(position, i);
+         char instruction = (distance > 0) ? '>' : '<';
+         instructions += std::string(std::abs(distance), instruction);
+         int delta = forest.zones[i].shortestDelta(target_rune);
+         instruction = (delta > 0) ? '+' : '-';
+         instructions += std::string(std::abs(delta), instruction);
+         instructions += '.';
+         if (instructions.size() < best_instructions.size() || best_instructions.empty())
+         {
+            best_instructions = instructions;
+         }
+      }
+      return best_instructions;
+   }
+
+   std::string getPhrase() const
+   {
+      return phrase;
+   }
+
+private:
+   Forest& forest;
+   int position = 0;
+   std::string phrase;
+};
 
 int main()
 {
    std::string magic_phrase;
    std::getline(std::cin, magic_phrase);
-
-   std::string runes(ZONE_SIZE, ' ');
-
-   std::string solution = "";
-   int position = 0;
-   
-   for (int i = 0; i < magic_phrase.size(); ++i)
+   std::string instructions;
+   Forest forest(ZONES_SIZE);
+   Blub blub(forest);
+   for (char rune : magic_phrase)
    {
-      size_t sign_position = runes.find(magic_phrase[i]);
-      if (sign_position != std::string::npos)
-      {
-         int best_signed_dist = 0;
-         int min_abs_dist = ZONE_SIZE + 1;
-         for (int j = 0; j < ZONE_SIZE; ++j)
-         {
-            if (runes[j] != magic_phrase[i])
-            {
-               continue;
-            }
-            int forward = (j - position + ZONE_SIZE) % ZONE_SIZE;
-            int backward = forward - ZONE_SIZE;
-
-            if (std::abs(forward) < min_abs_dist)
-            {
-               min_abs_dist = std::abs(forward);
-               best_signed_dist = forward;
-            }
-
-            if (std::abs(backward) < min_abs_dist)
-            {
-               min_abs_dist = std::abs(backward);
-               best_signed_dist = backward;
-            }
-         }
-
-         for (int j = 0; j < min_abs_dist; ++j)
-         {
-            if (best_signed_dist < 0)
-            {
-               solution += "<";
-               --position;
-               if (position == -1)
-               {
-                  position = ZONE_SIZE - 1;
-               }
-            }
-            else if (best_signed_dist > 0)
-            {
-               solution += ">";
-               ++position;
-               if (position == ZONE_SIZE)
-               {
-                  position = 0; 
-               }
-            }
-         } 
-      }
-      else
-      {
-         solution += ">";
-         ++position;
-         if (position == ZONE_SIZE)
-         {
-            position = 0;
-         }
-         while (runes[position] != magic_phrase[i])
-         {
-            int delta = shortestDelta(runes[position], magic_phrase[i]);
-            if (delta < 0)
-            {
-               solution += "-";
-               if (runes[position] == ' ')
-               {
-                  runes[position] = 'Z';
-               }
-               else if (runes[position] == 'A')
-               {
-                  runes[position] = ' ';
-               }
-               else
-               {
-                  --runes[position];
-               }
-            }
-            else if (delta >= 0)
-            {
-               solution += "+";
-               if (runes[position] == ' ')
-               {
-                  runes[position] = 'A';
-               }
-               else if (runes[position] == 'Z')
-               {
-                  runes[position] = ' ';
-               }
-               else
-               {
-                  ++runes[position];
-               }
-            }
-         }
-      }
-      solution += ".";
+      std::string best_instructions = blub.findBestInstructions(rune);
+      blub.applyInstructions(best_instructions);
+      instructions += best_instructions;
    }
-   std::cout << solution << std::endl;
+   std::cout << instructions << std::endl;
 }
