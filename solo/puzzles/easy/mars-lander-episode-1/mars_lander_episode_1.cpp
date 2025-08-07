@@ -13,7 +13,7 @@ int main()
    }
 
    // game loop
-   while (1)
+   while (true)
    {
       int x;
       int y;
@@ -24,11 +24,7 @@ int main()
       int power; // the thrust power (0 to 4).
       std::cin >> x >> y >> h_speed >> v_speed >> fuel >> rotate >> power; std::cin.ignore();
 
-      if (y > 1500)
-      {
-         std::cout << "0 3" << std::endl;
-      }
-      else if (y > 200)
+      if (v_speed < -39)
       {
          std::cout << "0 4" << std::endl;
       }
