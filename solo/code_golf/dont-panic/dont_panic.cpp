@@ -1,2 +1,2 @@
 #include<iostream>
-using namespace std;main(){int t,f,x,i,e[15];cin>>t>>t>>t>>f>>x>>t>>t>>t;e[f]=x;for(;i<t;++i){cin>>f>>x;e[f]=x;}for(;;){string d;cin>>f>>x>>d;cout<<((d[0]=='R'&&e[f]<x)||(d[0]=='L'&&e[f]>x)?"BLOCK":"WAIT")<<std::endl;}}
+main(){int t,f,i,e[15];std::cin>>t>>t>>t>>t>>e[t]>>t>>t>>t;for(;i<t;++i)std::cin>>f>>e[f];for(;;){char d[8];std::cin>>f>>t>>d;puts((e[f]-t)*(d[0]=='L'?1:-1)>0?"BLOCK":"WAIT");}}
