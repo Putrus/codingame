@@ -1,0 +1,2 @@
+#include<iostream>
+using namespace std;main(){int t,f,x,i,e[15];cin>>t>>t>>t>>f>>x>>t>>t>>t;e[f]=x;for(;i<t;++i){cin>>f>>x;e[f]=x;}for(;;){string d;cin>>f>>x>>d;cout<<((d[0]=='R'&&e[f]<x)||(d[0]=='L'&&e[f]>x)?"BLOCK":"WAIT")<<std::endl;}}
