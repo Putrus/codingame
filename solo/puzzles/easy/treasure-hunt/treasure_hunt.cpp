@@ -3,11 +3,82 @@
 #include <vector>
 #include <algorithm>
 #include <stack>
+#include <array>
 
-struct Position
+struct Point
 {
-   int x;
-   int y;
+   int x = 0;
+   int y = 0;
+};
+
+constexpr std::array<Point, 4> directions = {
+   Point{ 0, -1 },
+   Point{ 1, 0 },
+   Point{ 0, 1 },
+   Point{ -1, 0 }
+};
+
+struct Cell : public Point
+{
+   int gold = 0;
+};
+
+class TreasureHunter
+{
+public:
+   TreasureHunter(const std::vector<std::string>& grid, const Point& start_pos)
+      : grid(grid), start_pos(start_pos) {}
+
+   int hunt() const
+   {
+      std::stack<std::pair<Cell, std::vector<Point>>> positions;
+      positions.push({ { start_pos.x, start_pos.y, 0 }, {} });
+
+      int gold = 0;
+      while (!positions.empty())
+      {
+         auto [current, path] = positions.top();
+         positions.pop();
+
+         if (grid[current.y][current.x] == '#')
+         {
+            continue;
+         }
+
+         if (current.gold > gold)
+         {
+            gold = current.gold;
+         }
+
+         path.push_back(current);
+         for (const auto& dir : directions)
+         {
+            Point new_position = { current.x + dir.x, current.y + dir.y };
+            if (std::find_if(path.begin(), path.end(), [&new_position](const Point& point)
+               {
+                  return point.x == new_position.x && point.y == new_position.y;
+               }) != path.end())
+            {
+               continue;
+            }
+            if (isValidPosition(new_position))
+            {
+               positions.push({ { new_position.x, new_position.y, current.gold +
+                  (grid[new_position.y][new_position.x] == ' ' ? 0 : grid[new_position.y][new_position.x] - '0') }, path });
+            }
+         }
+      }
+      return gold;
+   }
+
+private:
+   bool isValidPosition(const Point& p) const
+   {
+      return p.x >= 0 && p.x < grid[0].size() && p.y >= 0 && p.y < grid.size() && grid[p.y][p.x] != '#';
+   }
+
+   std::vector<std::string> grid;
+   Point start_pos;
 };
 
 int main()
@@ -18,13 +89,13 @@ int main()
    std::vector<std::string> grid;
    std::vector<std::vector<int>> result_grid(h, std::vector(w, 0));
 
-   Position pos = { -1, -1, }; 
+   Point start_pos = { -1, -1 }; 
    for (int i = 0; i < h; i++)
    {
       std::string row;
       std::getline(std::cin, row);
       grid.push_back(row);
-      if (pos.x != -1)
+      if (start_pos.x != -1)
       {
          continue;
       }
@@ -32,61 +103,11 @@ int main()
       {
          if (row[j] == 'X')
          {
-            pos = { j, i };
+            start_pos = { j, i };
          }
       }
    }
 
-   std::stack<std::pair<Position, Position>> positions;
-   positions.push({ { -1, -1 }, pos });
-   while (!positions.empty())
-   {
-      auto position = positions.top();
-      positions.pop();
-      if (grid[position.second.y][position.second.x] == '#')
-      {
-         continue;
-      }
-
-      if (position.first.x == -1)
-      {
-         result_grid[position.second.y][position.second.x] = grid[position.second.y][position.second.x];
-      }
-      else
-      {
-         int new_value = result_grid[position.first.y][position.first.x] + (grid[position.second.y][position.second.x] - '0');
-         if (new_value > result_grid[position.second.y][position.second.x])
-         {
-            result_grid[position.second.y][position.second.x] = new_value;
-            if (position.second.x > 0)
-            {
-               positions.push({ position.second, { position.second.x - 1, position.second.y } });
-            }
-
-            if (position.second.x < w - 1)
-            {
-               positions.push({ position.second, { position.second.x + 1, position.second.y } });
-            }
-
-            if (position.second.y > 0)
-            {
-               positions.push({ position.second, { position.second.x, position.second.y - 1} });
-            }
-
-            if (position.second.y < h - 1)
-            {
-               positions.push({ position.second, { position.second.x, position.second.y + 1 } });
-            }
-         }
-      }
-
-      for (const auto& row : result_grid)
-      {
-         for (int val : row)
-         {
-            std::cerr << val;
-         }
-         std::cerr << std::endl;
-      }
-   }
+   TreasureHunter hunter(grid, start_pos);
+   std::cout << hunter.hunt() << std::endl;
 }
