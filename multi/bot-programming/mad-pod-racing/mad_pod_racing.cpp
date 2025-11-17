@@ -1,155 +1,135 @@
 #include <iostream>
-#include <string>
 #include <cmath>
+#include <vector>
 
-template <class T>
-class Vector2
+std::vector<double> getLineParameters(double x1, double y1, double x2, double y2)
 {
-public:
-   Vector2();
-   Vector2(T x, T y);
-   Vector2(Vector2 const& other);
-   Vector2(T value);
-   virtual ~Vector2();
-   Vector2 operator+(const Vector2& rhs);
-   Vector2 operator-(const Vector2& rhs);
-   Vector2 operator*(T num);
-
-   Vector2& operator+=(Vector2 const& rhs);
-   Vector2& operator-=(Vector2 const& rhs);
-   Vector2& operator*=(T num);
-
-   T distance(const Vector2& other);
-   Vector2 closest(const Vector2& first, const Vector2& second);
-
-public:
-   T x;
-   T y;
-};
-
-template <class T>
-Vector2<T>::Vector2() : x((T)0), y((T)0) {}
-
-template <class T>
-Vector2<T>::Vector2(T x, T y) : x(x), y(y) {}
-
-template <class T>
-Vector2<T>::Vector2(const Vector2& other) : x(other.x), y(other.y) {}
-
-template <class T>
-Vector2<T>::Vector2(T value) : x(value), y(value) {}
-
-template <class T>
-Vector2<T>::~Vector2() {}
-
-template <class T>
-Vector2<T> Vector2<T>::operator+(Vector2 const& rhs)
-{
-   return { this->x + rhs.x, this->y + rhs.y };
-}
-
-template <class T>
-Vector2<T> Vector2<T>::operator-(Vector2 const& rhs)
-{
-   return { this->x - rhs.x, this->y - rhs.y };
-}
-
-template <class T>
-Vector2<T> Vector2<T>::operator*(T num)
-{
-   return { this->x * num, this->y * num };
-}
-
-template <class T>
-Vector2<T>& Vector2<T>::operator+=(Vector2 const& rhs)
-{
-   this->x += rhs.x;
-   this->y += rhs.y;
-   return *this;
-}
-
-template <class T>
-Vector2<T>& Vector2<T>::operator-=(Vector2 const& rhs)
-{
-   this->x -= rhs.x;
-   this->y -= rhs.y;
-   return *this;
-}
-
-template <class T>
-Vector2<T>& Vector2<T>::operator*=(T num)
-{
-   this->x *= num;
-   this->y *= num;
-   return *this;
-}
-
-template <class T>
-T Vector2<T>::distance(const Vector2& other)
-{
-   T dx = this->x - other.x;
-   T dy = this->y - other.y;
-   return std::sqrt(dx * dx + dy * dy);
-}
-
-template <class T>
-Vector2<T> Vector2<T>::closest(const Vector2& first, const Vector2& second)
-{
-   T dist_first = this->distance(first);
-   T dist_second = this->distance(second);
-   return (dist_first < dist_second) ? first : second;
-}
-
-template <class T>
-std::istream& operator>>(std::istream& is, Vector2<T>& rhs)
-{
-   is >> rhs.x >> rhs.y;
-   return is;
-}
-
-template <class T>
-std::ostream& operator<<(std::ostream& os, Vector2<T> const& rhs)
-{
-   os << rhs.x << ' ' << rhs.y;
-   return os;
-}
-
-template <class T>
-bool operator==(Vector2<T> const& lhs, Vector2<T> const& rhs)
-{
-   return lhs.x == rhs.x && lhs.y == rhs.y;
-}
-
-template <class T>
-bool operator!=(Vector2<T> const& lhs, Vector2<T> const& rhs)
-{
-   return lhs.x != rhs.x || lhs.y != rhs.y;
-}
-
-template <class T>
-bool operator!=(Vector2<T>& lhs, Vector2<T> & rhs)
-{
-   return lhs.x != rhs.x || lhs.y != rhs.y;
+   double a = (y2 - y1) / (x2 - x1);
+   double b = y1 - a * x1;
+   return { a, b };
 }
 
 int main()
 {
+   std::vector<std::pair<int,int>> checkpoint_list;
+   std::vector<std::pair<int,int>> position_list;
 
-   while (true) 
+   int checkpoint_index = 0;
+   int frame_index = 0;
+   int boost_used = 0;
+
+   std::vector<double> line_parameters;
+   std::vector<double> new_destination(2);
+
+   while (true)
    {
-      int x;
-      int y;
-      int next_checkpoint_x; // x position of the next check point
-      int next_checkpoint_y; // y position of the next check point
-      int next_checkpoint_dist; // distance to the next checkpoint
-      int next_checkpoint_angle; // angle between your pod orientation and the direction of the next checkpoint
-      std::cin >> x >> y >> next_checkpoint_x >> next_checkpoint_y >> next_checkpoint_dist >> next_checkpoint_angle; std::cin.ignore();
-      int opponent_x;
-      int opponent_y;
-      std::cin >> opponent_x >> opponent_y; std::cin.ignore();
-      
-      std::cout << next_checkpoint_x << " " << next_checkpoint_y << " 80" << std::endl;
-   }
-}
+      int x, y;
+      int next_checkpoint_x, next_checkpoint_y;
+      int next_checkpoint_distance, next_checkpoint_angle;
 
-// https://files.magusgeek.com/csb/csb_en.html
+      std::cin >> x >> y >> next_checkpoint_x >> next_checkpoint_y >> next_checkpoint_distance >> next_checkpoint_angle;
+      int opponent_x, opponent_y;
+
+      std::cin >> opponent_x >> opponent_y;
+      double checkpoint_distance = next_checkpoint_distance;
+      double opponent_next_checkpoint_distance = std::sqrt(std::pow(opponent_x - next_checkpoint_x, 2) + std::pow(opponent_y - next_checkpoint_y, 2));
+      double my_opponent_distance = std::sqrt(std::pow(opponent_x - x, 2) + std::pow(opponent_y - y, 2));
+
+      if (checkpoint_list.empty())
+      {
+         checkpoint_list.push_back({next_checkpoint_x, next_checkpoint_y});
+         checkpoint_index++;
+      } 
+      else if (checkpoint_list[checkpoint_index - 1].first != next_checkpoint_x ||
+         checkpoint_list[checkpoint_index - 1].second != next_checkpoint_y)
+      {
+         checkpoint_list.push_back({next_checkpoint_x, next_checkpoint_y});
+         checkpoint_index++;
+      }
+
+      if (checkpoint_index >= 2)
+      {
+         std::vector<double> new_line_parameters = getLineParameters(checkpoint_list[checkpoint_index - 1].first, checkpoint_list[checkpoint_index - 1].second,
+            checkpoint_list[checkpoint_index - 2].first, checkpoint_list[checkpoint_index - 2].second);
+
+         if (line_parameters != new_line_parameters)
+         {
+            line_parameters = new_line_parameters;
+
+            int delta_x = checkpoint_list[checkpoint_index - 1].first - checkpoint_list[checkpoint_index - 2].first;
+            int delta_y = checkpoint_list[checkpoint_index - 1].second - checkpoint_list[checkpoint_index - 2].second;
+
+            double delta_r = std::sqrt(delta_x * delta_x + delta_y * delta_y);
+
+            double new_delta_x = std::abs(600.0 * delta_x / delta_r);
+            double new_delta_y = std::abs(600.0 * delta_y / delta_r);
+
+            if (delta_x < 0 && delta_y < 0)
+            {
+               new_destination[0] = checkpoint_list[checkpoint_index - 1].first + new_delta_x;
+               new_destination[1] = checkpoint_list[checkpoint_index - 1].second + new_delta_y;
+            } 
+            else if (delta_x < 0 && delta_y > 0)
+            {
+               new_destination[0] = checkpoint_list[checkpoint_index - 1].first + new_delta_x;
+               new_destination[1] = checkpoint_list[checkpoint_index - 1].second - new_delta_y;
+            } 
+            else if (delta_x > 0 && delta_y > 0)
+            {
+               new_destination[0] = checkpoint_list[checkpoint_index - 1].first - new_delta_x;
+               new_destination[1] = checkpoint_list[checkpoint_index - 1].second - new_delta_y;
+            } 
+            else if (delta_x > 0 && delta_y < 0)
+            {
+               new_destination[0] = checkpoint_list[checkpoint_index - 1].first - new_delta_x;
+               new_destination[1] = checkpoint_list[checkpoint_index - 1].second + new_delta_y;
+            }
+         }
+      }
+
+      int thrust = 100;
+
+      if (std::abs(next_checkpoint_angle) > 90)
+      {
+         thrust = 0;
+      } 
+      else if (next_checkpoint_distance < 1500)
+      {
+         thrust = 0;
+      }
+
+      position_list.push_back({ x, y });
+
+      if (frame_index >= 1)
+      {
+         int dx = position_list[frame_index - 1].first - position_list[frame_index].first;
+         int dy = position_list[frame_index - 1].second - position_list[frame_index].second;
+
+         if (std::abs(dx) < 350 && std::abs(dy) < 350)
+         {
+            thrust = 100;
+         }
+      }
+
+      if (boost_used == 0 &&
+         opponent_next_checkpoint_distance < 600 &&
+         checkpoint_distance > 600 &&
+         checkpoint_distance < 1200) 
+      {
+         boost_used = 1;
+         std::cout << opponent_x << " " << opponent_y << " BOOST\n";
+      }
+      else if (checkpoint_index >= 2)
+      {
+         std::cout << static_cast<int>(new_destination[0]) << " " << static_cast<int>(new_destination[1]) << " " << thrust << std::endl;;
+      }
+      else
+      {
+         std::cout << next_checkpoint_x << " " << next_checkpoint_y << " " << thrust << std::endl;
+      }
+
+      frame_index++;
+   }
+
+   return 0;
+}
