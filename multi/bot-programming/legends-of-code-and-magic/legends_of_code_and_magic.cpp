@@ -2,12 +2,14 @@
 #include <iostream>
 #include <string>
 #include <vector>
+
 constexpr unsigned int DRAFT_PHASE      = 0;
 constexpr unsigned int BATTLE_PHASE    = 30;
 constexpr char PLAYER_HAND             = 0;
 constexpr char PLAYER_BOARD            = 1;
 constexpr char OPPONENT_BOARD          = -1;
 constexpr char OPPONENT                = -1;
+
 enum class CardAbility : size_t
 {
    Breakthrough = 0,
@@ -18,6 +20,7 @@ enum class CardAbility : size_t
    Ward,
    Length
 };
+
 enum class CardType
 {
    Creature = 0,
@@ -25,6 +28,7 @@ enum class CardType
    RedItem,
    BlueItem
 };
+
 class Card
 {
 public:
@@ -50,9 +54,11 @@ public:
    int getOpponentHealthChange() const;
    int getDraw() const;
    bool getCanAttack() const;
+
    //setters
    void setDefense(int defense);
    void setCanAttack(bool can_attack);
+
 private:
    friend std::istream& operator>>(std::istream& is, Card& card);
    friend Card operator-(Card& card, int attack);
@@ -60,6 +66,7 @@ private:
    friend Card operator+(Card& card, std::pair<int, int> bonus);
    friend Card& operator+=(Card& card, std::pair<int, int> bonus);
    friend Card& operator+=(Card& card, std::string abilities);
+
 private:
    int m_number;
    int m_id;
@@ -74,12 +81,14 @@ private:
    int m_draw;
    bool m_can_attack = true;
 };
+
 double Card::attackProfit(const Card& attacked_card) const
 {
    double player_value = attacked_card.m_attack >= m_defense ? m_defense + m_attack : attacked_card.m_attack;
    double opponent_value = m_attack >= attacked_card.m_defense ? attacked_card.m_defense + attacked_card.m_attack : m_attack;
    return opponent_value / player_value;
 }
+
 bool Card::hasAbility(CardAbility ability) const
 {
    if (m_abilities.length() != static_cast<size_t>(CardAbility::Length))
@@ -88,6 +97,7 @@ bool Card::hasAbility(CardAbility ability) const
    }
    return m_abilities.at(static_cast<size_t>(ability)) != '-';
 }
+
 bool Card::hasAbility(char ability) const
 {
    if (ability == '-')
@@ -96,22 +106,27 @@ bool Card::hasAbility(char ability) const
    }
    return m_abilities.find(ability) != std::string::npos;
 }
+
 void Card::addAttack(int attack)
 {
    m_attack += attack;
 }
+
 void Card::addDefense(int defense)
 {
    m_defense += defense;
 }
+
 void Card::subtractAttack(int attack)
 {
    m_attack -= attack;
 }
+
 void Card::subtractDefense(int defense)
 {
    m_defense -= defense;
 }
+
 void Card::subtractAbility(CardAbility ability)
 {
    if (m_abilities.length() == static_cast<size_t>(CardAbility::Length))
@@ -119,6 +134,7 @@ void Card::subtractAbility(CardAbility ability)
       m_abilities.at(static_cast<size_t>(ability)) = '-';
    }
 }
+
 void Card::subtractAbilities(std::string abilities)
 {
    if (m_abilities.length() == abilities.length())
@@ -132,58 +148,72 @@ void Card::subtractAbilities(std::string abilities)
       }
    }
 }
+
 int Card::getId() const
 {
    return m_id;
 }
+
 int Card::getLocation() const
 {
    return m_location;
 }
+
 CardType Card::getType() const
 {
    return m_type;
 }
+
 int Card::getCost() const
 {
    return m_cost;
 }
+
 int Card::getAttack() const
 {
    return m_attack;
 }
+
 int Card::getDefense() const
 {
    return m_defense;
 }
+
 std::string Card::getAbilities() const
 {
    return m_abilities;
 }
+
 int Card::getPlayerHealthChange() const
 {
    return m_player_health_change;
 }
+
 int Card::getOpponentHealthChange() const
 {
    return m_opponent_health_change;
 }
+
 int Card::getDraw() const
 {
    return m_draw;
 }
+
 bool Card::getCanAttack() const
 {
    return m_can_attack;
 }
+
 void Card::setDefense(int defense)
 {
    m_defense = defense;
 }
+
 void Card::setCanAttack(bool can_attack)
 {
    m_can_attack = can_attack;
 }
+
 std::istream& operator>>(std::istream& is, Card& card)
 {
    int type;
@@ -192,29 +222,34 @@ std::istream& operator>>(std::istream& is, Card& card)
    card.m_type = static_cast<CardType>(type);
    return is;
 }
+
 Card operator-(Card& card, int attack)
 {
    Card created_card = card;
    created_card.subtractDefense(attack);
    return created_card;
 }
+
 Card& operator-=(Card& card, int attack)
 {
    card.m_defense -= attack;
    return card;
 }
+
 Card operator+(Card& card, std::pair<int, int> bonus)
 {
    Card created_card = card;
    created_card += bonus;
    return created_card;
 }
+
 Card& operator+=(Card& card, std::pair<int, int> bonus)
 {
    card.addAttack(bonus.first);
    card.addDefense(bonus.second);
    return card;
 }
+
 Card& operator+=(Card& card, std::string abilities)
 {
    if (card.m_abilities.length() == abilities.length())
@@ -229,6 +264,7 @@ Card& operator+=(Card& card, std::string abilities)
    }
    return card;
 }
+
 class BasePlayer
 {
 public:
@@ -239,6 +275,7 @@ public:
    std::vector<Card> getCards() const;
    void addCard(const Card& card);
    void clearCards();
+
 protected:
    int m_health;
    int m_mana;
@@ -247,35 +284,43 @@ protected:
    int m_draw;
    std::vector<Card> m_cards;
 };
+
 int BasePlayer::getMana() const
 {
    return m_mana;
 }
+
 int BasePlayer::getHealth() const
 {
-    return m_health;
+   return m_health;
 }
+
 void BasePlayer::setMana(int mana)
 {
    m_mana = mana;
 }
+
 void BasePlayer::setHealth(int health)
 {
    m_health = health;
 }
+
 std::vector<Card> BasePlayer::getCards() const
 {
    return m_cards;
 }
+
 void BasePlayer::addCard(const Card& card)
 {
    m_cards.push_back(card);
 }
+
 void BasePlayer::clearCards()
 {
    m_cards.clear();
    m_cards.shrink_to_fit();
 }
+
 class Player final : public BasePlayer
 {
 public:
@@ -286,11 +331,13 @@ public:
 private:
    friend std::istream& operator>>(std::istream& is, Player& player);
 };
+
 std::istream& operator>>(std::istream& is, Player& player)
 {
    is >> player.m_health >> player.m_mana >> player.m_deck >> player.m_rune >> player.m_draw;
    return is;
 }
+
 std::vector<Card> Player::getCards(char location) const
 {
    if (location == PLAYER_BOARD || location == PLAYER_HAND)
@@ -308,25 +355,31 @@ std::vector<Card> Player::getCards(char location) const
       return std::vector<Card>();
    }
 }
+
 std::vector<Card> Player::getCards() const
 {
    return m_cards;
 }
+
 void Player::clearCards()
 {
    m_cards.clear();
    m_cards.shrink_to_fit();
 }
+
 class Opponent final : public BasePlayer
 {
 public:
    void clearCards();
+
 private:
    friend std::istream& operator>>(std::istream& is, Opponent& opponent);
+
 private:
    int m_hand;
    std::vector<std::string> m_actions;
 };
+
 std::istream& operator>>(std::istream& is, Opponent& opponent)
 {
    int actions_number;
@@ -340,22 +393,27 @@ std::istream& operator>>(std::istream& is, Opponent& opponent)
    }
    return is;
 }
+
 void Opponent::clearCards()
 {
    m_cards.clear();
    m_cards.shrink_to_fit();
 }
+
 class Dominator
 {
 public:
    void makeMove(unsigned int turn, Player& player, Opponent& opponent);
+
 private:
    void draft(Player& player, Opponent& opponent);
    void battle(Player& player, Opponent& opponent);
    double getDraftCardRatio(const Card& card);
+
 private:
    std::vector<int> m_draft_costs_cards = { 0, 0, 0, 0, 0, 0, 0, 0 };
 };
+
 void Dominator::makeMove(unsigned int turn, Player& player, Opponent& opponent)
 {
    if (turn >= DRAFT_PHASE && turn <= BATTLE_PHASE)
@@ -367,6 +425,7 @@ void Dominator::makeMove(unsigned int turn, Player& player, Opponent& opponent)
       battle(player, opponent);
    }
 }
+
 void Dominator::draft(Player& player, Opponent& opponent)
 {
    const std::vector<Card>& cards_to_choose = player.getCards();
@@ -377,16 +436,19 @@ void Dominator::draft(Player& player, Opponent& opponent)
       });
    std::cout << "PICK " << std::distance(cards_to_choose.begin(), best_card) << std::endl;
 }
+
 void Dominator::battle(Player& player, Opponent& opponent)
 {
    std::vector<Card> player_board_cards = player.getCards(PLAYER_BOARD);
    std::vector<Card> player_hand_cards = player.getCards(PLAYER_HAND);
    std::vector<Card> opponent_cards = opponent.getCards();
+   
    std::sort(player_hand_cards.begin(), player_hand_cards.end(),
       [](const auto& l_card, const auto& r_card)
       {
          return l_card.getCost() > r_card.getCost();
       });
+
    //summon
    for (auto& player_card : player_hand_cards)
    {
@@ -469,7 +531,7 @@ void Dominator::battle(Player& player, Opponent& opponent)
    std::sort(player_board_cards.begin(), player_board_cards.end(),
       [](const auto& l_card, const auto& r_card)
       {
-         return l_card.hasAbility(CardAbility::Lethal);
+         return l_card.getAttack() > r_card.getAttack();
       });
    //attack
    for (auto& player_card : player_board_cards)
@@ -478,43 +540,43 @@ void Dominator::battle(Player& player, Opponent& opponent)
       {
          continue;
       }
-      auto guard_card = std::find_if(opponent_cards.begin(), opponent_cards.end(),
-         [](const auto& card)
-         {
-            return card.hasAbility(CardAbility::Guard);
-         });
-      auto attacked_card = std::max_element(opponent_cards.begin(), opponent_cards.end(),
-         [player_card](const auto& card1, const auto& card2) {
-            return player_card.attackProfit(card1) < player_card.attackProfit(card2) || card2.hasAbility(CardAbility::Guard);
-         });
-      if (!opponent_cards.empty() && (player_card.attackProfit(*attacked_card) > 1.0 ||
-         player_card.hasAbility(CardAbility::Lethal) || attacked_card->hasAbility(CardAbility::Guard)))
+
+      std::vector<Card> guard_opponent_cards;
+      std::copy_if(opponent_cards.begin(), opponent_cards.end(), std::back_inserter(guard_opponent_cards),
+         [](const Card& card) { return card.hasAbility(CardAbility::Guard); });
+      
+      std::vector<Card>& to_attack_cards = guard_opponent_cards.empty() ? opponent_cards : guard_opponent_cards;
+      double best_profit = guard_opponent_cards.empty() ? player_card.getAttack() : 0;
+      int attack_id = -1;
+
+      if (!to_attack_cards.empty())
       {
-         if (guard_card == opponent_cards.end() && opponent.getHealth() < player_card.getAttack())
+         for (const auto& card : to_attack_cards)
          {
-            std::cout << "ATTACK " << player_card.getId() << " " << static_cast<int>(OPPONENT) << ';';
-         }
-         std::cout << "ATTACK " << player_card.getId() << " " << attacked_card->getId() << ';';
-         if (attacked_card->hasAbility(CardAbility::Ward))
-         {
-            attacked_card->subtractAbility(CardAbility::Ward);
-         }
-         else
-         {
-            attacked_card->setDefense(attacked_card->getDefense() - player_card.getAttack());
-            if (attacked_card->getDefense() <= 0 || player_card.hasAbility(CardAbility::Lethal))
+            double profit = player_card.attackProfit(card);
+            if (profit < best_profit)
             {
-               opponent_cards.erase(attacked_card);
+               best_profit = profit;
+               attack_id = card.getId();
             }
          }
       }
-      else
+
+      std::cout << "ATTACK " << player_card.getId() << ' ' << attack_id << ';';
+      if (attack_id != -1)
       {
-         std::cout << "ATTACK " << player_card.getId() << " " << static_cast<int>(OPPONENT) << ';';
+         auto attacked_opponent_card = std::find_if(opponent_cards.begin(), opponent_cards.end(),
+            [attack_id](const Card& card) { return card.getId() == attack_id; });
+         *attacked_opponent_card -= player_card.getAttack();
+         if (attacked_opponent_card->getDefense() <= 0)
+         {
+            opponent_cards.erase(attacked_opponent_card);
+         }
       }
    }
    std::cout << "PASS" << std::endl;
 }
+
 double Dominator::getDraftCardRatio(const Card& card)
 {
    int breakthrough_bonus = card.hasAbility(CardAbility::Breakthrough) ? card.getAttack() + 1 : 0;
@@ -525,22 +587,26 @@ double Dominator::getDraftCardRatio(const Card& card)
    int ward_bonus = card.hasAbility(CardAbility::Ward) ? card.getAttack() + 1: 0;
    int abilities_bonus = breakthrough_bonus + charge_bonus + drain_bonus + guard_bonus + lethal_bonus + ward_bonus;
    return (card.getAttack() + card.getDefense() + abilities_bonus + card.getPlayerHealthChange() - card.getOpponentHealthChange())
-      / (static_cast<double>(card.getCost()) + 0.5);
+      / (static_cast<double>(card.getCost()) + 2.5);
 }
+
 class Game
 {
 public:
    void start();
+
 private:
    void updateTurn();
    void updatePlayers();
    void updateCards();
+
 private:
    unsigned int m_turn = DRAFT_PHASE;
    Player m_player;
    Opponent m_opponent;
    Dominator m_dominator;
 };
+
 void Game::start()
 {
    //game loop
@@ -554,14 +620,17 @@ void Game::start()
       m_opponent.clearCards();
    }
 }
+
 void Game::updateTurn()
 {
    ++m_turn;
 }
+
 void Game::updatePlayers()
 {
    std::cin >> m_player >> m_opponent;
 }
+
 void Game::updateCards()
 {
    int card_count;
@@ -581,6 +650,7 @@ void Game::updateCards()
       }
    }
 }
+
 int main()
 {
    Game game;
