@@ -137,121 +137,52 @@ std::vector<double> getLineParameters(Vector2<double> p1, Vector2<double> p2)
    return { a, b };
 }
 
+class Pod
+{
+public:
+   Vector2<int> position;
+   Vector2<int> velocity;
+   int angle;
+   int next_check_point_id;
+};
+
+std::istream& operator>>(std::istream& is, Pod& pod)
+{
+   is >> pod.position >> pod.velocity >> pod.angle >> pod.next_check_point_id;
+   return is;
+}
+
+constexpr int POD_SIZE = 2;
+
 int main()
 {
-   std::vector<Vector2<double>> checkpoint_list;
-   std::vector<Vector2<double>> position_list;
+   int laps;
+   std::cin >> laps; std::cin.ignore();
+   int checkpoint_count;
+   std::cin >> checkpoint_count; std::cin.ignore();
 
-   int checkpoint_index = 0;
-   int frame_index = 0;
-   int boost_used = 0;
-
-   std::vector<double> line_parameters;
-   std::vector<double> new_destination(2);
-
-   while (true)
+   std::vector<Vector2<int>> checkpoints;
+   for (int i = 0; i < checkpoint_count; i++)
    {
-      Vector2<double> pod_position;
-      Vector2<double> next_checkpoint_position;
-      int next_checkpoint_distance, next_checkpoint_angle;
-
-      std::cin >> pod_position >> next_checkpoint_position >> next_checkpoint_distance >> next_checkpoint_angle;
-      Vector2<double> opponent_position;
-
-      std::cin >> opponent_position;
-      double checkpoint_distance = next_checkpoint_distance;
-      double opponent_next_checkpoint_distance = next_checkpoint_position.distance(opponent_position);
-
-      if (checkpoint_list.empty())
-      {
-         checkpoint_list.push_back(next_checkpoint_position);
-         checkpoint_index++;
-      } 
-      else if (checkpoint_list[checkpoint_index - 1] != next_checkpoint_position)
-      {
-         checkpoint_list.push_back(next_checkpoint_position);
-         checkpoint_index++;
-      }
-
-      if (checkpoint_index >= 2)
-      {
-         std::vector<double> new_line_parameters = getLineParameters(checkpoint_list[checkpoint_index - 1], checkpoint_list[checkpoint_index - 2]);
-
-         if (line_parameters != new_line_parameters)
-         {
-            line_parameters = new_line_parameters;
-            Vector2<double> delta = checkpoint_list[checkpoint_index - 1] - checkpoint_list[checkpoint_index - 2];
-
-            double delta_r = std::sqrt(delta.x * delta.x + delta.y * delta.y);
-
-            double new_delta_x = std::abs(600.0 * delta.x / delta_r);
-            double new_delta_y = std::abs(600.0 * delta.y / delta_r);
-
-            if (delta.x < 0 && delta.y < 0)
-            {
-               new_destination[0] = checkpoint_list[checkpoint_index - 1].x + new_delta_x;
-               new_destination[1] = checkpoint_list[checkpoint_index - 1].y + new_delta_y;
-            } 
-            else if (delta.x < 0 && delta.y > 0)
-            {
-               new_destination[0] = checkpoint_list[checkpoint_index - 1].x + new_delta_x;
-               new_destination[1] = checkpoint_list[checkpoint_index - 1].y - new_delta_y;
-            } 
-            else if (delta.x > 0 && delta.y > 0)
-            {
-               new_destination[0] = checkpoint_list[checkpoint_index - 1].x - new_delta_x;
-               new_destination[1] = checkpoint_list[checkpoint_index - 1].y - new_delta_y;
-            } 
-            else if (delta.x > 0 && delta.y < 0)
-            {
-               new_destination[0] = checkpoint_list[checkpoint_index - 1].x - new_delta_x;
-               new_destination[1] = checkpoint_list[checkpoint_index - 1].y + new_delta_y;
-            }
-         }
-      }
-
-      int thrust = 100;
-
-      if (std::abs(next_checkpoint_angle) > 90)
-      {
-         thrust = 0;
-      } 
-      else if (next_checkpoint_distance < 1500)
-      {
-         thrust = 0;
-      }
-
-      position_list.push_back(pod_position);
-
-      if (frame_index >= 1)
-      {
-         Vector2<double> delta = position_list[frame_index - 1] - position_list[frame_index];
-
-         if (std::abs(delta.x) < 350 && std::abs(delta.y) < 350)
-         {
-            thrust = 100;
-         }
-      }
-
-      if (boost_used == 0 &&
-         opponent_next_checkpoint_distance < 600 &&
-         checkpoint_distance > 600 &&
-         checkpoint_distance < 1200) 
-      {
-         boost_used = 1;
-         std::cout << opponent_position.x << " " << opponent_position.y << " BOOST\n";
-      }
-      else if (checkpoint_index >= 2)
-      {
-         std::cout << static_cast<int>(new_destination[0]) << " " << static_cast<int>(new_destination[1]) << " " << thrust << std::endl;;
-      }
-      else
-      {
-         std::cout << next_checkpoint_position.x << " " << next_checkpoint_position.y << " " << thrust << std::endl;
-      }
-
-      frame_index++;
+      Vector2<int> checkpoint;
+      std::cin >> checkpoint; std::cin.ignore();
+      checkpoints.push_back(checkpoint);
    }
 
-   return 0;
+   while (1)
+   {
+      Pod pods[POD_SIZE];
+      Pod opponents[POD_SIZE];
+      
+      for (int i = 0; i < POD_SIZE; i++)
+      {
+         std::cin >> pods[i]; std::cin.ignore();
+      }
+      for (int i = 0; i < POD_SIZE; i++)
+      {
+         std::cin >> opponents[i]; std::cin.ignore();
+      }
+      std::cout << checkpoints[pods[0].next_check_point_id] << " 75" << std::endl;
+      std::cout << checkpoints[pods[1].next_check_point_id] << " 75" << std::endl;
+   }
 }
