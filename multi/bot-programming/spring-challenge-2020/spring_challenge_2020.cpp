@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <cmath>
+#include <vector>
 
 template <class T>
 class Vector2
@@ -142,6 +143,31 @@ std::istream& operator>>(std::istream& is, Pellet& pellet)
    return is;
 }
 
+enum class PacType
+{
+   NEAREST = 0,
+   FARTHEST,
+   GREEDY,
+   NONE
+};
+
+struct Pac
+{
+   int id;
+   bool mine;
+   Vector2<int> position;
+   std::string type_id;
+   int speed_turns_left;
+   int ability_cooldown;
+   PacType type;
+};
+
+std::istream& operator>>(std::istream& is, Pac& pac)
+{
+   is >> pac.id >> pac.mine >> pac.position >> pac.type_id >> pac.speed_turns_left >> pac.ability_cooldown;
+   return is;
+}
+
 int main()
 {
    int width; // size of the grid
@@ -161,40 +187,47 @@ int main()
       std::cin >> my_score >> opponent_score; std::cin.ignore();
       int visible_pac_count; // all your pacs and enemy pacs in sight
       std::cin >> visible_pac_count; std::cin.ignore();
-      int mine_pac_id = 0;
-      Vector2<int> mine_pac_position;
+      std::vector<Pac> mine_pacs;
       for (int i = 0; i < visible_pac_count; i++)
       {
-         int pac_id; // pac number (unique within a team)
-         bool mine; // true if this pac is yours
-         int x; // position in the grid
-         int y; // position in the grid
-         std::string type_id; // unused in wood leagues
-         int speed_turns_left; // unused in wood leagues
-         int ability_cooldown; // unused in wood leagues
-         std::cin >> pac_id >> mine >> x >> y >> type_id >> speed_turns_left >> ability_cooldown; std::cin.ignore();
-         if (mine)
+         Pac pac;
+         std::cin >> pac; std::cin.ignore();
+         pac.type = static_cast<PacType>(pac.id % 3);
+         if (pac.mine)
          {
-            mine_pac_id = pac_id;
-            mine_pac_position = {x, y};
+            mine_pacs.push_back(pac);
          }
       }
       int visible_pellet_count; // all pellets in sight
       std::cin >> visible_pellet_count; std::cin.ignore();
+      std::vector<Pellet> pellets;
       Pellet target{{width, height}, 0};
       int target_distance = std::numeric_limits<int>::max();
       for (int i = 0; i < visible_pellet_count; i++)
       {
          Pellet pellet;
          std::cin >> pellet; std::cin.ignore();
-         int distance = mine_pac_position.distance(pellet.position);
-         if (pellet.value > target.value || (pellet.value == target.value && distance < target_distance))
-         {
-            target = pellet;
-            target_distance = distance;
-         }
+         pellets.push_back(pellet);
       }
 
-      std::cout << "MOVE " << mine_pac_id << " " << target.position << std::endl;
+      for (Pac& mine_pac : mine_pacs)
+      {
+         target = { {0, 0}, 0 };
+         target_distance = std::numeric_limits<int>::max();
+         for (Pellet& pellet : pellets)
+         {
+            int distance = mine_pac.position.distance(pellet.position);
+            if (pellet.value > target.value || (pellet.value == target.value && distance < target_distance))
+            {
+               target = pellet;
+               target_distance = distance;
+            }
+         }
+         pellets.erase(std::remove_if(pellets.begin(), pellets.end(), [&target](const Pellet& pellet) {
+            return pellet.position == target.position;
+            }), pellets.end());
+         std::cout << "MOVE " << mine_pac.id << " " << target.position << "|";
+      }
+      std::cout << std::endl;
    }
 }
