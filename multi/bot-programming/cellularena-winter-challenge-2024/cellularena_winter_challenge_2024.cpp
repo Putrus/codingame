@@ -152,7 +152,8 @@ std::istream& operator>>(std::istream& is, Entity& entity)
 
 enum class EntityType
 {
-   Wall = 0,
+   Empty = 0,
+   Wall,
    Root,
    Basic,
    Tentacle,
@@ -161,128 +162,88 @@ enum class EntityType
    A,
    B,
    C,
-   D,
-   Unknown
+   D
 };
 
-int bfs_distance(const Vector2<int>& start, const Vector2<int>& goal, const std::vector<std::vector<EntityType>>& grid)
+EntityType entityTypeFromString(const std::string& type_str)
 {
-   if (start == goal) return 0;
-
-   int width = grid[0].size();
-   int height = grid.size();
-   std::vector<std::vector<int>> dist(height, std::vector<int>(width, -1));
-   std::queue<Vector2<int>> q;
-
-   q.push(start);
-   dist[start.y][start.x] = 0;
-
-   const int dx[4] = {1, -1, 0, 0};
-   const int dy[4] = {0, 0, 1, -1};
-
-   while (!q.empty())
+   if (type_str == "WALL")
    {
-      Vector2<int> cur = q.front();
-      q.pop();
-
-      for (int i = 0; i < 4; i++)
-      {
-         int nx = cur.x + dx[i];
-         int ny = cur.y + dy[i];
-
-         if (nx < 0 || ny < 0 || nx >= width || ny >= height)
-            continue;
-         
-         if (grid[ny][nx] == EntityType::Wall || grid[ny][nx] == EntityType::Basic)
-            continue;
-
-         if (dist[ny][nx] != -1)
-            continue;
-
-         dist[ny][nx] = dist[cur.y][cur.x] + 1;
-         if (nx == goal.x && ny == goal.y)
-            return dist[ny][nx];
-
-         q.push({nx, ny});
-      }
+      return EntityType::Wall;
    }
-
-   return -1;
+   else if (type_str == "ROOT")
+   {
+      return EntityType::Root;
+   }
+   else if (type_str == "BASIC")
+   {
+      return EntityType::Basic;
+   }
+   else if (type_str == "TENTACLE")
+   {
+      return EntityType::Tentacle;
+   }
+   else if (type_str == "HARVESTER")
+   {
+      return EntityType::Harvester;
+   }
+   else if (type_str == "SPORER")
+   {
+      return EntityType::Sporer;
+   }
+   else if (type_str == "A")
+   {
+      return EntityType::A;
+   }
+   else if (type_str == "B")
+   {
+      return EntityType::B;
+   }
+   else if (type_str == "C")
+   {
+      return EntityType::C;
+   }
+   else if (type_str == "D")
+   {
+      return EntityType::D;
+   }
+   else
+   {
+      return EntityType::Empty;
+   }
 }
 
 int main()
 {
+   const std::vector<Vector2<int>> dirs = {
+      {0, -1},
+      {0,  1},
+      {-1, 0},
+      {1,  0}
+   };
    int width; // columns in the game grid
    int height; // rows in the game grid
    std::cin >> width >> height; std::cin.ignore();
-
+   bool harvester_grown = false;
    // game loop
    while (1)
    {
       int entity_count;
       std::cin >> entity_count; std::cin.ignore();
       std::vector<Entity> my_organs;
-      std::vector<Entity> A_proteins;
       std::vector<std::vector<EntityType>> grid(height, std::vector<EntityType>(width));
       for (int i = 0; i < entity_count; i++)
       {
          Entity entity;
          std::cin >> entity; std::cin.ignore();
-         if (entity.type == "A")
-         {
-            A_proteins.push_back(entity);
-         }
-         else if (entity.owner == 1)
+         if (entity.owner == 1)
          {
             my_organs.push_back(entity);
          }
 
-         if (entity.type == "WALL")
-         {
-            grid[entity.position.y][entity.position.x] = EntityType::Wall;
-         }
-         else if (entity.type == "ROOT")
-         {
-            grid[entity.position.y][entity.position.x] = EntityType::Root;
-         }
-         else if (entity.type == "BASIC")
-         {
-            grid[entity.position.y][entity.position.x] = EntityType::Basic;
-         }
-         else if (entity.type == "TENTACLE")
-         {
-            grid[entity.position.y][entity.position.x] = EntityType::Tentacle;
-         }
-         else if (entity.type == "HARVESTER")
-         {
-            grid[entity.position.y][entity.position.x] = EntityType::Harvester;
-         }
-         else if (entity.type == "SPORER")
-         {
-            grid[entity.position.y][entity.position.x] = EntityType::Sporer;
-         }
-         else if (entity.type == "A")
-         {
-            grid[entity.position.y][entity.position.x] = EntityType::A;
-         }
-         else if (entity.type == "B")
-         {
-            grid[entity.position.y][entity.position.x] = EntityType::B;
-         }
-         else if (entity.type == "C")
-         {
-            grid[entity.position.y][entity.position.x] = EntityType::C;
-         }
-         else if (entity.type == "D")
-         {
-            grid[entity.position.y][entity.position.x] = EntityType::D;
-         }
-         else
-         {
-            grid[entity.position.y][entity.position.x] = EntityType::Unknown;
-         }
-         
+         grid[entity.position.y][entity.position.x] = entityTypeFromString(entity.type);
       }
+      
       int my_a;
       int my_b;
       int my_c;
@@ -296,23 +257,71 @@ int main()
       int required_actions_count; // your number of organisms, output an action for each one in any order
       std::cin >> required_actions_count; std::cin.ignore();
 
-      Entity closest_organ = my_organs[0];
-      Entity closest_entity = A_proteins[0];
+      Entity chosen_organ = my_organs[0];
+      Vector2<int> target_position = {0, 0};
+      std::string grow_type = "BASIC";
+      Vector2<int> harvester_dir = {0, 0};
+      bool found = false;
       for (Entity& my_organ : my_organs)
       {
-         for (Entity& protein : A_proteins)
+         for (auto& d : dirs)
          {
-            if (bfs_distance(my_organ.position, protein.position, grid) <
-               bfs_distance(closest_organ.position, closest_entity.position, grid))
+            int nx = my_organ.position.x + d.x;
+            int ny = my_organ.position.y + d.y;
+
+            if (nx < 0 || nx >= width || ny < 0 || ny >= height)
+               continue;
+
+            if (grid[ny][nx] == EntityType::Empty)
             {
-               closest_organ = my_organ;
-               closest_entity = protein;
+               bool near_A = false;
+               
+               for (auto& dd : dirs)
+               {
+                  int ax = nx + dd.x;
+                  int ay = ny + dd.y;
+
+                  if (ax < 0 || ax >= width || ay < 0 || ay >= height)
+                     continue;
+
+                  if (grid[ay][ax] == EntityType::A)
+                  {
+                     near_A = true;
+                     harvester_dir = dd;
+                     break;
+                  }
+               }
+
+               if (near_A && !harvester_grown)
+               {
+                  chosen_organ = my_organ;
+                  target_position = {nx, ny};
+                  grow_type = "HARVESTER";
+                  found = true;
+                  break;
+               }
+
+               if (!found)
+               {
+                  chosen_organ = my_organ;
+                  target_position = {nx, ny};
+                  grow_type = "BASIC";
+               }
             }
+            if (found) break;
          }
       }
       for (int i = 0; i < required_actions_count; i++)
       {
-         std::cout << "GROW " << closest_organ.organ_id << " " << closest_entity.position << " BASIC" << std::endl;
+         std::string direction = "N";
+         if (harvester_dir.x == 1) direction = "E";
+         else if (harvester_dir.x == -1) direction = "W";
+         else if (harvester_dir.y == 1) direction = "S";
+         std::cout << "GROW " << chosen_organ.organ_id << " " << target_position << " " << grow_type << " " << direction << std::endl;
+         if (grow_type == "HARVESTER")
+         {
+            harvester_grown = true;
+         }
       }
    }
 }
