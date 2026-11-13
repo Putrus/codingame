@@ -677,10 +677,8 @@ void Dominator::battle(Player& player, Opponent& opponent)
             auto best_player_card = std::max_element(player_board_cards.begin(), player_board_cards.end(),
                [](const auto& l_card, const auto& r_card)
                {
-                  int l_val = l_card.getAttack() + l_card.getDefense() + (l_card.getCanAttack() ? 10 : 0) +
-                              (l_card.hasAbility(CardAbility::Ward) ? 6 : 0) + (l_card.hasAbility(CardAbility::Drain) ? 4 : 0);
-                  int r_val = r_card.getAttack() + r_card.getDefense() + (r_card.getCanAttack() ? 10 : 0) +
-                              (r_card.hasAbility(CardAbility::Ward) ? 6 : 0) + (r_card.hasAbility(CardAbility::Drain) ? 4 : 0);
+                  int l_val = l_card.getAttack() + l_card.getDefense() + (l_card.getCanAttack() ? 6 : 0);
+                  int r_val = r_card.getAttack() + r_card.getDefense() + (r_card.getCanAttack() ? 6 : 0);
                   return l_val < r_val;
                });
             *best_player_card += std::make_pair<int, int>(player_card.getAttack(), player_card.getDefense());
@@ -871,11 +869,11 @@ void Dominator::battle(Player& player, Opponent& opponent)
             if (!tgt->hasAbility(CardAbility::Guard)) continue;
 
             double score = att->attackProfit(*tgt);
-            // Overkill penalty: strongly prefer minimal overkill to preserve big attackers for face
+            // Overkill penalty: prefer minimal overkill
             if (att->getAttack() >= tgt->getDefense())
             {
                int overkill = att->getAttack() - tgt->getDefense();
-               score -= overkill * 3.5;
+               score -= overkill * 0.5;
             }
 
             if (score > best_guard_score)
@@ -913,7 +911,11 @@ void Dominator::battle(Player& player, Opponent& opponent)
 
       // Base face score
       double face_score = player_card.getAttack() * 50.0;
-      if (opponent.getHealth() <= 15)
+      if (opponent.getHealth() <= 12)
+      {
+         face_score += 2000.0;
+      }
+      else if (opponent.getHealth() <= 15)
       {
          face_score += (16 - opponent.getHealth()) * 40.0;
       }
@@ -1017,7 +1019,7 @@ double Dominator::getDraftCardRatio(const Card& card) const
       // Abilities
       if (card.hasAbility(CardAbility::Guard))
       {
-         score += (m_guards_count < 4) ? 3.5 : 2.0;
+         score += (m_guards_count < 5) ? 3.8 : 2.0;
       }
       if (card.hasAbility(CardAbility::Ward))
       {
@@ -1071,6 +1073,11 @@ double Dominator::getDraftCardRatio(const Card& card) const
          if (ab == 'W') score += 2.0;
          if (ab == 'L') score += 1.5;
       }
+
+      if (dmg == 0 && card.getAttack() == 0 && card.getDraw() == 0)
+      {
+         score = -10.0;
+      }
    }
    else if (card.getType() == CardType::BlueItem)
    {
@@ -1084,51 +1091,42 @@ double Dominator::getDraftCardRatio(const Card& card) const
    // Mana cost efficiency: subtract cost scaling
    score -= cost * 1.85;
 
-   // Item cap management (max 3-4 items in deck)
+   // Item cap management (max 4-5 items in deck)
    if (card.getType() != CardType::Creature)
    {
-      if (m_items_count >= 4)
+      if (m_items_count >= 5)
       {
-         score -= 12.0;
+         score -= 8.0;
       }
-      else if (m_items_count >= 2)
+      else if (m_items_count >= 3)
       {
-         score -= 2.0;
+         score -= 2.5;
       }
    }
 
    // Mana curve balancing
-   // Target distribution: 0-1: 2, 2: 6, 3: 9, 4: 7, 5: 4, 6: 1, 7+: 1
-   static const double ideal_curve[8] = { 2.0, 2.0, 6.0, 9.0, 7.0, 4.0, 1.0, 1.0 };
+   // Target distribution: 0-1: 2, 2: 5, 3: 8, 4: 6, 5: 5, 6: 2, 7+: 2
+   static const double ideal_curve[8] = { 2.0, 2.0, 5.0, 8.0, 6.0, 5.0, 2.0, 2.0 };
    double expected = ideal_curve[cost_bucket] * (std::max(1, m_pick_number) / 30.0);
    int current = m_draft_costs_cards[cost_bucket];
 
    if (current > expected + 1.0)
    {
-      score -= (current - expected) * 2.2;
+      score -= (current - expected) * 1.8;
    }
    else if (current < expected - 0.5)
    {
-      score += (expected - current) * 1.5;
+      score += (expected - current) * 1.2;
    }
 
    if (current >= ideal_curve[cost_bucket])
    {
-      score -= (current - ideal_curve[cost_bucket] + 1) * 3.0;
+      score -= (current - ideal_curve[cost_bucket] + 1) * 2.5;
    }
 
-   // Prevent drafting too many heavy cards (cost >= 6)
-   if (cost >= 6)
+   if (cost >= 7 && current >= 2)
    {
-      score -= (cost - 5) * 2.0;
-   }
-   if (cost >= 7 && current >= 1)
-   {
-      score -= 8.0;
-   }
-   if (cost == 6 && current >= 2)
-   {
-      score -= 6.0;
+      score -= 5.0;
    }
 
    return score;
