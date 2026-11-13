@@ -1,2 +1,2 @@
-#include<iostream>
-int main(){for(;;){int m=0,d=0,i=0,h;for(;i<8;i++){std::cin>>h;if(h>m){m=h;d=i;}}printf("%d\n",d);}}
+#import<iostream>
+int h,m,x,i;main(){for(;std::cin>>h;++i&8&&printf("%d\n",x,i=m=0))h>m?m=h,x=i:0;}
