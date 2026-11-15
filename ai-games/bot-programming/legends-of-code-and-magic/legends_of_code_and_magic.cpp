@@ -1,5 +1,7 @@
 #include <algorithm>
+#include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -45,6 +47,7 @@ public:
    void takeDamage(int damage, bool is_lethal = false);
    
    //getters
+   int getNumber() const;
    int getId() const;
    int getLocation() const;
    CardType getType() const;
@@ -233,6 +236,11 @@ void Card::takeDamage(int damage, bool is_lethal)
    {
       m_defense -= damage;
    }
+}
+
+int Card::getNumber() const
+{
+   return m_number;
 }
 
 int Card::getId() const
@@ -486,6 +494,34 @@ void Opponent::clearCards()
    m_cards.shrink_to_fit();
 }
 
+class FastRng
+{
+public:
+   FastRng(uint32_t seed = 123456789) : m_state(seed) {}
+   uint32_t next()
+   {
+      m_state ^= m_state << 13;
+      m_state ^= m_state >> 17;
+      m_state ^= m_state << 5;
+      return m_state;
+   }
+   int nextInt(int min, int max)
+   {
+      return min + static_cast<int>(next() % (max - min + 1));
+   }
+private:
+   uint32_t m_state;
+};
+
+struct MCTSCombatState
+{
+   int player_hp;
+   int opponent_hp;
+   std::vector<Card> player_board;
+   std::vector<Card> opponent_board;
+   std::vector<std::string> actions;
+};
+
 class Dominator
 {
 public:
@@ -495,6 +531,16 @@ private:
    void draft(Player& player, Opponent& opponent);
    void battle(Player& player, Opponent& opponent);
    double getDraftCardRatio(const Card& card) const;
+
+   void executeMonteCarloCombat(
+      const std::vector<Card>& player_board,
+      const std::vector<Card>& opponent_board,
+      int player_hp,
+      int opponent_hp) const;
+   void runBaselineCombat(MCTSCombatState& state) const;
+   void applyAttack(MCTSCombatState& state, int attacker_id, int target_id) const;
+   double evaluateMCTSState(const MCTSCombatState& state) const;
+   MCTSCombatState runMonteCarloRollout(const MCTSCombatState& initial_state, FastRng& rng, bool is_baseline) const;
 
 private:
    std::vector<int> m_draft_costs_cards = { 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -775,101 +821,172 @@ void Dominator::battle(Player& player, Opponent& opponent)
       }
    }
 
-   // 2. Direct lethal check: if face damage can win the game right now
-   bool has_guards = std::any_of(opponent_cards.begin(), opponent_cards.end(),
-      [](const Card& card) { return card.hasAbility(CardAbility::Guard); });
+   executeMonteCarloCombat(player_board_cards, opponent_cards, player.getHealth(), opponent.getHealth());
+}
 
-   if (!has_guards)
+void Dominator::applyAttack(MCTSCombatState& state, int attacker_id, int target_id) const
+{
+   auto att_it = std::find_if(state.player_board.begin(), state.player_board.end(),
+      [attacker_id](const Card& c) { return c.getId() == attacker_id; });
+   if (att_it == state.player_board.end()) return;
+
+   state.actions.push_back("ATTACK " + std::to_string(attacker_id) + " " + std::to_string(target_id) + ";");
+   att_it->setCanAttack(false);
+
+   if (target_id == -1)
    {
-      int total_face_damage = 0;
-      for (const auto& card : player_board_cards)
+      state.opponent_hp -= att_it->getAttack();
+      if (att_it->hasAbility(CardAbility::Drain))
       {
-         if (card.getCanAttack() && card.getAttack() > 0)
-         {
-            total_face_damage += card.getAttack();
-         }
+         state.player_hp += att_it->getAttack();
       }
+      return;
+   }
 
-      if (total_face_damage >= opponent.getHealth())
+   auto tgt_it = std::find_if(state.opponent_board.begin(), state.opponent_board.end(),
+      [target_id](const Card& c) { return c.getId() == target_id; });
+   if (tgt_it == state.opponent_board.end()) return;
+
+   int att_dmg = att_it->getAttack();
+   int tgt_dmg = tgt_it->getAttack();
+   bool att_lethal = att_it->hasAbility(CardAbility::Lethal);
+   bool tgt_lethal = tgt_it->hasAbility(CardAbility::Lethal);
+
+   if (att_it->hasAbility(CardAbility::Drain))
+   {
+      state.player_hp += std::min(att_dmg, tgt_it->getDefense());
+   }
+   if (tgt_it->hasAbility(CardAbility::Drain))
+   {
+      state.opponent_hp += std::min(tgt_dmg, att_it->getDefense());
+   }
+
+   if (att_it->hasAbility(CardAbility::Breakthrough) && !tgt_it->hasAbility(CardAbility::Ward))
+   {
+      if (att_dmg > tgt_it->getDefense())
       {
-         for (auto& card : player_board_cards)
-         {
-            if (card.getCanAttack() && card.getAttack() > 0)
-            {
-               std::cout << "ATTACK " << card.getId() << " -1;";
-               card.setCanAttack(false);
-            }
-         }
-         std::cout << "PASS" << std::endl;
-         return;
+         state.opponent_hp -= (att_dmg - tgt_it->getDefense());
       }
    }
 
-   // 3. Combat resolution: clear Guards first with optimal trades, then face or free trades
+   tgt_it->takeDamage(att_dmg, att_lethal);
+   att_it->takeDamage(tgt_dmg, tgt_lethal);
+
+   if (tgt_it->getDefense() <= 0)
+   {
+      state.opponent_board.erase(tgt_it);
+   }
+   if (att_it->getDefense() <= 0)
+   {
+      state.player_board.erase(att_it);
+   }
+}
+
+double Dominator::evaluateMCTSState(const MCTSCombatState& state) const
+{
+   if (state.opponent_hp <= 0)
+   {
+      return 1000000.0 + (30 - state.opponent_hp);
+   }
+   if (state.player_hp <= 0)
+   {
+      return -1000000.0;
+   }
+
+   double score = 0.0;
+
+   // Opponent HP damage pressure
+   score += (30 - state.opponent_hp) * 14.0;
+   if (state.opponent_hp <= 12)
+   {
+      score += (13 - state.opponent_hp) * 45.0;
+   }
+
+   // Player HP safety
+   score += state.player_hp * 6.0;
+
+   // Friendly board value
+   for (const auto& card : state.player_board)
+   {
+      double val = card.getAttack() * 1.5 + card.getDefense() * 1.2;
+      if (card.hasAbility(CardAbility::Ward)) val += 5.0;
+      if (card.hasAbility(CardAbility::Guard)) val += 4.0;
+      if (card.hasAbility(CardAbility::Lethal)) val += 4.0;
+      if (card.hasAbility(CardAbility::Drain)) val += 3.0;
+      score += val * 10.0;
+   }
+
+   // Opponent board threat
+   int opp_total_attack = 0;
+   for (const auto& enemy : state.opponent_board)
+   {
+      double opp_val = enemy.getAttack() * 2.2 + enemy.getDefense() * 1.2;
+      if (enemy.hasAbility(CardAbility::Lethal)) opp_val += 15.0;
+      if (enemy.hasAbility(CardAbility::Drain)) opp_val += 12.0;
+      if (enemy.hasAbility(CardAbility::Guard)) opp_val += 8.0;
+      if (enemy.hasAbility(CardAbility::Ward)) opp_val += 6.0;
+      score -= opp_val * 10.0;
+      opp_total_attack += enemy.getAttack();
+   }
+
+   // 1-Ply counter-attack threat
+   if (opp_total_attack >= state.player_hp)
+   {
+      score -= 50000.0 + (opp_total_attack - state.player_hp) * 100.0;
+   }
+   else if (state.player_hp - opp_total_attack <= 6)
+   {
+      score -= (7 - (state.player_hp - opp_total_attack)) * 250.0;
+   }
+
+   return score;
+}
+
+void Dominator::runBaselineCombat(MCTSCombatState& state) const
+{
+   // 1. Pop Ward on Guard creatures with smallest attacker first
+   auto ward_guard_it = std::find_if(state.opponent_board.begin(), state.opponent_board.end(),
+      [](const Card& c) { return c.hasAbility(CardAbility::Guard) && c.hasAbility(CardAbility::Ward); });
+
+   if (ward_guard_it != state.opponent_board.end())
+   {
+      auto weakest_attacker = state.player_board.end();
+      int min_atk = 1000;
+      for (auto it = state.player_board.begin(); it != state.player_board.end(); ++it)
+      {
+         if (it->getCanAttack() && it->getAttack() > 0 && it->getAttack() < min_atk)
+         {
+            min_atk = it->getAttack();
+            weakest_attacker = it;
+         }
+      }
+
+      if (weakest_attacker != state.player_board.end())
+      {
+         applyAttack(state, weakest_attacker->getId(), ward_guard_it->getId());
+      }
+   }
+
+   // 2. Clear remaining guards with highest attack first
    while (true)
    {
-      // Find remaining guards
-      std::vector<Card> guard_opponent_cards;
-      std::copy_if(opponent_cards.begin(), opponent_cards.end(), std::back_inserter(guard_opponent_cards),
-         [](const Card& card) { return card.hasAbility(CardAbility::Guard); });
+      bool has_guard = std::any_of(state.opponent_board.begin(), state.opponent_board.end(),
+         [](const Card& c) { return c.hasAbility(CardAbility::Guard); });
+      if (!has_guard) break;
 
-      if (guard_opponent_cards.empty())
-      {
-         break;
-      }
-
-      // Check if any guard has Ward: pop it with our lowest-attack ready minion
-      auto ward_guard_it = std::find_if(guard_opponent_cards.begin(), guard_opponent_cards.end(),
-         [](const Card& c) { return c.hasAbility(CardAbility::Ward); });
-
-      if (ward_guard_it != guard_opponent_cards.end())
-      {
-         auto weakest_attacker = player_board_cards.end();
-         int min_atk = 1000;
-         for (auto it = player_board_cards.begin(); it != player_board_cards.end(); ++it)
-         {
-            if (it->getCanAttack() && it->getAttack() > 0 && it->getAttack() < min_atk)
-            {
-               min_atk = it->getAttack();
-               weakest_attacker = it;
-            }
-         }
-
-         if (weakest_attacker != player_board_cards.end())
-         {
-            int target_id = ward_guard_it->getId();
-            std::cout << "ATTACK " << weakest_attacker->getId() << ' ' << target_id << ';';
-            weakest_attacker->setCanAttack(false);
-
-            auto opp_it = std::find_if(opponent_cards.begin(), opponent_cards.end(),
-               [target_id](const Card& c) { return c.getId() == target_id; });
-            if (opp_it != opponent_cards.end())
-            {
-               opp_it->takeDamage(weakest_attacker->getAttack(), weakest_attacker->hasAbility(CardAbility::Lethal));
-               if (opp_it->getDefense() <= 0)
-               {
-                  opponent_cards.erase(opp_it);
-               }
-            }
-            continue;
-         }
-      }
-
-      // Find best attacker against remaining guards
+      auto best_att = state.player_board.end();
+      auto best_tgt = state.opponent_board.end();
       double best_guard_score = -1e9;
-      auto best_att = player_board_cards.end();
-      auto best_tgt = opponent_cards.end();
 
-      for (auto att = player_board_cards.begin(); att != player_board_cards.end(); ++att)
+      for (auto att = state.player_board.begin(); att != state.player_board.end(); ++att)
       {
          if (!att->getCanAttack() || att->getAttack() <= 0) continue;
 
-         for (auto tgt = opponent_cards.begin(); tgt != opponent_cards.end(); ++tgt)
+         for (auto tgt = state.opponent_board.begin(); tgt != state.opponent_board.end(); ++tgt)
          {
             if (!tgt->hasAbility(CardAbility::Guard)) continue;
 
             double score = att->attackProfit(*tgt);
-            // Overkill penalty: prefer minimal overkill
             if (att->getAttack() >= tgt->getDefense())
             {
                int overkill = att->getAttack() - tgt->getDefense();
@@ -885,39 +1002,38 @@ void Dominator::battle(Player& player, Opponent& opponent)
          }
       }
 
-      if (best_att == player_board_cards.end() || best_tgt == opponent_cards.end())
-      {
-         break;
-      }
+      if (best_att == state.player_board.end() || best_tgt == state.opponent_board.end()) break;
+      applyAttack(state, best_att->getId(), best_tgt->getId());
+   }
 
-      int target_id = best_tgt->getId();
-      std::cout << "ATTACK " << best_att->getId() << ' ' << target_id << ';';
-      best_att->setCanAttack(false);
-
-      best_tgt->takeDamage(best_att->getAttack(), best_att->hasAbility(CardAbility::Lethal));
-      if (best_tgt->getDefense() <= 0)
+   // 3. No guards remain: face or free trades/trading up
+   std::vector<int> face_attacker_ids;
+   for (const auto& c : state.player_board)
+   {
+      if (c.getCanAttack() && c.getAttack() > 0)
       {
-         opponent_cards.erase(best_tgt);
+         face_attacker_ids.push_back(c.getId());
       }
    }
 
-   // 4. No guards remain: choose between attacking face or taking high-value trades (free trade / trading up)
-   for (auto& player_card : player_board_cards)
+   for (int att_id : face_attacker_ids)
    {
-      if (player_card.getAttack() <= 0 || !player_card.getCanAttack())
+      auto player_card_it = std::find_if(state.player_board.begin(), state.player_board.end(),
+         [att_id](const Card& c) { return c.getId() == att_id; });
+      if (player_card_it == state.player_board.end() || player_card_it->getAttack() <= 0 || !player_card_it->getCanAttack())
       {
          continue;
       }
+      auto& player_card = *player_card_it;
 
-      // Base face score
       double face_score = player_card.getAttack() * 50.0;
-      if (opponent.getHealth() <= 12)
+      if (state.opponent_hp <= 12)
       {
          face_score += 2000.0;
       }
-      else if (opponent.getHealth() <= 15)
+      else if (state.opponent_hp <= 15)
       {
-         face_score += (16 - opponent.getHealth()) * 40.0;
+         face_score += (16 - state.opponent_hp) * 40.0;
       }
       if (player_card.hasAbility(CardAbility::Drain))
       {
@@ -927,7 +1043,7 @@ void Dominator::battle(Player& player, Opponent& opponent)
       double best_trade_score = -1e9;
       int best_target_id = -1;
 
-      for (const auto& enemy : opponent_cards)
+      for (const auto& enemy : state.opponent_board)
       {
          double trade_score = 0.0;
          if (enemy.hasAbility(CardAbility::Ward))
@@ -941,12 +1057,10 @@ void Dominator::battle(Player& player, Opponent& opponent)
 
             if (kills_target && survives)
             {
-               // Free trade: friendly kills enemy and survives
                trade_score = 3500.0 + enemy.getAttack() * 45.0 + enemy.getDefense() * 25.0;
             }
             else if (kills_target && !survives)
             {
-               // 1-for-1 mutual kill: only trade if enemy is higher value (trading up)
                double enemy_val = enemy.getAttack() * 1.5 + enemy.getDefense();
                double my_val = player_card.getAttack() * 1.5 + player_card.getDefense();
                if (enemy.hasAbility(CardAbility::Lethal)) enemy_val += 15.0;
@@ -963,7 +1077,6 @@ void Dominator::battle(Player& player, Opponent& opponent)
             }
             else
             {
-               // Friendly dies without killing enemy: never do this
                trade_score = -1000.0;
             }
          }
@@ -981,29 +1094,207 @@ void Dominator::battle(Player& player, Opponent& opponent)
          attack_id = best_target_id;
       }
 
-      std::cout << "ATTACK " << player_card.getId() << ' ' << attack_id << ';';
-      player_card.setCanAttack(false);
+      applyAttack(state, player_card.getId(), attack_id);
+   }
+}
 
-      if (attack_id != -1)
+MCTSCombatState Dominator::runMonteCarloRollout(const MCTSCombatState& initial_state, FastRng& rng, bool is_baseline) const
+{
+   MCTSCombatState state = initial_state;
+
+   if (is_baseline)
+   {
+      runBaselineCombat(state);
+      return state;
+   }
+
+   std::vector<int> ready_ids;
+   for (const auto& c : state.player_board)
+   {
+      if (c.getCanAttack() && c.getAttack() > 0)
       {
-         auto attacked_opponent_card = std::find_if(opponent_cards.begin(), opponent_cards.end(),
-            [attack_id](const Card& card) { return card.getId() == attack_id; });
-         if (attacked_opponent_card != opponent_cards.end())
+         ready_ids.push_back(c.getId());
+      }
+   }
+
+   // Randomize attacker order (Fisher-Yates shuffle)
+   for (int i = static_cast<int>(ready_ids.size()) - 1; i > 0; --i)
+   {
+      int j = rng.nextInt(0, i);
+      std::swap(ready_ids[i], ready_ids[j]);
+   }
+
+   for (int att_id : ready_ids)
+   {
+      auto att_it = std::find_if(state.player_board.begin(), state.player_board.end(),
+         [att_id](const Card& c) { return c.getId() == att_id; });
+      if (att_it == state.player_board.end() || !att_it->getCanAttack() || att_it->getAttack() <= 0)
+      {
+         continue;
+      }
+
+      std::vector<int> guard_ids;
+      for (const auto& c : state.opponent_board)
+      {
+         if (c.hasAbility(CardAbility::Guard))
          {
-            attacked_opponent_card->takeDamage(player_card.getAttack(), player_card.hasAbility(CardAbility::Lethal));
-            if (attacked_opponent_card->getDefense() <= 0)
-            {
-               opponent_cards.erase(attacked_opponent_card);
-            }
+            guard_ids.push_back(c.getId());
          }
       }
+
+      if (!guard_ids.empty())
+      {
+         int g_id = guard_ids[rng.nextInt(0, static_cast<int>(guard_ids.size()) - 1)];
+         applyAttack(state, att_id, g_id);
+      }
+      else
+      {
+         if (state.opponent_hp <= att_it->getAttack())
+         {
+            applyAttack(state, att_id, -1);
+            continue;
+         }
+
+         std::vector<int> targets = { -1 };
+         for (const auto& e : state.opponent_board)
+         {
+            targets.push_back(e.getId());
+         }
+
+         int choice = rng.nextInt(0, 100);
+         if (choice < 65 || targets.size() == 1)
+         {
+            applyAttack(state, att_id, -1);
+         }
+         else
+         {
+            int target_id = targets[rng.nextInt(1, static_cast<int>(targets.size()) - 1)];
+            applyAttack(state, att_id, target_id);
+         }
+      }
+   }
+
+   return state;
+}
+
+void Dominator::executeMonteCarloCombat(
+   const std::vector<Card>& player_board,
+   const std::vector<Card>& opponent_board,
+   int player_hp,
+   int opponent_hp) const
+{
+   MCTSCombatState initial_state;
+   initial_state.player_hp = player_hp;
+   initial_state.opponent_hp = opponent_hp;
+   initial_state.player_board = player_board;
+   initial_state.opponent_board = opponent_board;
+
+   // Direct lethal check
+   int total_face_dmg = 0;
+   bool has_guards = false;
+   for (const auto& c : opponent_board)
+   {
+      if (c.hasAbility(CardAbility::Guard)) has_guards = true;
+   }
+   if (!has_guards)
+   {
+      for (const auto& c : player_board)
+      {
+         if (c.getCanAttack() && c.getAttack() > 0) total_face_dmg += c.getAttack();
+      }
+      if (total_face_dmg >= opponent_hp)
+      {
+         for (const auto& c : player_board)
+         {
+            if (c.getCanAttack() && c.getAttack() > 0)
+            {
+               std::cout << "ATTACK " << c.getId() << " -1;";
+            }
+         }
+         std::cout << "PASS" << std::endl;
+         return;
+      }
+   }
+
+   auto start_time = std::chrono::steady_clock::now();
+   FastRng rng(static_cast<uint32_t>(start_time.time_since_epoch().count()));
+
+   MCTSCombatState best_state = runMonteCarloRollout(initial_state, rng, true);
+   double best_score = evaluateMCTSState(best_state);
+
+   int iterations = 0;
+   while (true)
+   {
+      if ((iterations & 63) == 0)
+      {
+         auto now = std::chrono::steady_clock::now();
+         auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - start_time).count();
+         if (elapsed_ms >= 75)
+         {
+            break;
+         }
+      }
+
+      MCTSCombatState candidate = runMonteCarloRollout(initial_state, rng, false);
+      double score = evaluateMCTSState(candidate);
+
+      if (score > best_score)
+      {
+         best_score = score;
+         best_state = candidate;
+         if (candidate.opponent_hp <= 0)
+         {
+            break;
+         }
+      }
+      ++iterations;
+   }
+
+   for (const auto& act : best_state.actions)
+   {
+      std::cout << act;
    }
    std::cout << "PASS" << std::endl;
 }
 
+
 double Dominator::getDraftCardRatio(const Card& card) const
 {
+   static const int CLOSET_SCORES[160] =
+   {
+      -666,   65,   50,   80,   50,   70,   71,  115,   71,   73,
+        43,   77,   62,   63,   50,   66,   60,   66,   90,   75,
+        50,   68,   67,  100,   42,   63,   67,   52,   69,   90,
+        60,   47,   87,   81,   67,   62,   75,   94,   56,   62,
+        51,   61,   43,   54,   97,   64,   67,   49,  109,  111,
+        89,  114,   93,   92,   89,    2,   54,   25,   63,   76,
+        58,   99,   79,   19,   82,  115,  106,  104,  146,   98,
+        70,   56,   65,   52,   54,   65,   55,   77,   48,   84,
+       115,   75,   89,   68,   80,   71,   46,   73,   69,   47,
+        63,   70,   11,   71,   54,   85,   77,   77,   64,   82,
+        62,   49,   43,   78,   67,   72,   67,   36,   48,   75,
+        -8,   82,   69,   32,   87,   98,  124,   35,   60,   59,
+        49,   72,   54,   35,   22,   50,   54,   51,   54,   59,
+        38,   31,   43,   62,   55,   57,   41,   70,   38,   76,
+         1, -100, -100, -100, -100, -100, -100, -100, -100, -100,
+      -100, -100, -100, -100, -100, -100, -100, -100, -100, -100,
+   };
+
    double score = 0.0;
+   int card_num = card.getNumber();
+   if (card_num >= 1 && card_num <= 160)
+   {
+      int closet_val = CLOSET_SCORES[card_num - 1];
+      if (closet_val >= 0)
+      {
+         score += (closet_val - 70.0) * 0.12;
+      }
+      else
+      {
+         score += (closet_val <= -500) ? -50.0 : -25.0;
+      }
+   }
+
    int cost = card.getCost();
    int cost_bucket = std::min(cost, 7);
 
@@ -1031,7 +1322,7 @@ double Dominator::getDraftCardRatio(const Card& card) const
       }
       if (card.hasAbility(CardAbility::Charge))
       {
-         score += 2.5;
+         score += 3.2;
       }
       if (card.hasAbility(CardAbility::Drain))
       {
@@ -1042,12 +1333,22 @@ double Dominator::getDraftCardRatio(const Card& card) const
          score += 1.0;
       }
 
+      // Keyword synergies
+      if (card.hasAbility(CardAbility::Ward) && card.hasAbility(CardAbility::Lethal))
+      {
+         score += 1.8;
+      }
+      if (card.hasAbility(CardAbility::Ward) && card.hasAbility(CardAbility::Guard))
+      {
+         score += 1.5;
+      }
+
       score += card.getPlayerHealthChange() * 0.25;
       score -= card.getOpponentHealthChange() * 0.6;
 
       if (attack == 0)
       {
-         score -= 2.0;
+         score -= 6.0;
       }
    }
    else if (card.getType() == CardType::GreenItem)
